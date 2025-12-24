@@ -6,7 +6,7 @@
 
 A powerful Flutter package for creating complex, resizable, multi-pane layouts. Ideal for building IDE-like interfaces, advanced dashboards, and desktop applications.
 
-![Panes Example](example/demo.gif)
+![Panes Example](https://raw.githubusercontent.com/SoFluffyOS/panes/develop/example/demo.gif)
 
 ## Features
 
