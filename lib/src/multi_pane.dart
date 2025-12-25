@@ -181,9 +181,19 @@ class _MultiPaneState extends State<MultiPane> {
                     },
                     onResizeStart: () {
                       setState(() => _isResizing = true);
+                      // Save sizes for both adjacent panes in case of auto-hide
+                      widget.controller.savePreDragSize(entry.id);
+                      if (i + 1 < entries.length) {
+                        widget.controller.savePreDragSize(entries[i + 1].id);
+                      }
                     },
                     onResizeEnd: () {
                       setState(() => _isResizing = false);
+                      // Clear saved sizes if not auto-hidden
+                      widget.controller.clearPreDragSize(entry.id);
+                      if (i + 1 < entries.length) {
+                        widget.controller.clearPreDragSize(entries[i + 1].id);
+                      }
                     },
                     onDoubleTap: () {
                       widget.controller.resetSize(entry.id);

@@ -11,6 +11,10 @@ class PaneController extends ChangeNotifier {
   final Map<String, double> _pendingAutoHideSizes = {};
   final Map<String, bool> _visibilityOverrides = {};
 
+  /// Stores the size a pane had before it was auto-hidden.
+  /// This is used to restore the size when the pane is shown again.
+  final Map<String, double> _autoHideRestoreSizes = {};
+
   /// Creates a [PaneController] with the given list of [entries].
   PaneController({required List<PaneEntry> entries}) : _entries = entries;
 
@@ -36,9 +40,18 @@ class PaneController extends ChangeNotifier {
   }
 
   /// Shows the pane with the given [id].
+  ///
+  /// If the pane was auto-hidden, restores it to its pre-hide size.
   void show(String id) {
     if (_visibilityOverrides[id] == true) return;
     _visibilityOverrides[id] = true;
+
+    // Restore size if this pane was auto-hidden
+    final restoreSize = _autoHideRestoreSizes.remove(id);
+    if (restoreSize != null) {
+      _currentPixelSizes[id] = restoreSize;
+    }
+
     notifyListeners();
   }
 
@@ -48,6 +61,30 @@ class PaneController extends ChangeNotifier {
       hide(id);
     } else {
       show(id);
+    }
+  }
+
+  /// Saves the current size of the pane before a drag operation.
+  ///
+  /// This should be called when a resize drag starts on a pane with auto-hide
+  /// enabled. If the pane is later auto-hidden during the drag, this size
+  /// will be restored when the pane is shown again.
+  void savePreDragSize(String id) {
+    final entry = _entries.firstWhere(
+      (e) => e.id == id,
+      orElse: () => throw Exception('Pane $id not found'),
+    );
+    if (entry.autoHide) {
+      _autoHideRestoreSizes[id] =
+          _currentPixelSizes[id] ?? entry.initialSize.size;
+    }
+  }
+
+  /// Clears the saved pre-drag size when a resize drag ends without auto-hide.
+  void clearPreDragSize(String id) {
+    // Only clear if the pane is still visible (not auto-hidden)
+    if (isVisible(id)) {
+      _autoHideRestoreSizes.remove(id);
     }
   }
 
@@ -165,16 +202,24 @@ class PaneController extends ChangeNotifier {
   }
 
   /// Resets the size of the pane with the given [id] to its initial configuration.
+  ///
+  /// Also clears any pending auto-hide state and saved restore sizes.
   void resetSize(String id) {
     _currentPixelSizes.remove(id);
     _currentFractionalSizes.remove(id);
+    _pendingAutoHideSizes.remove(id);
+    _autoHideRestoreSizes.remove(id);
     notifyListeners();
   }
 
   /// Resets all pane sizes to their initial configurations.
+  ///
+  /// Also clears any pending auto-hide state and saved restore sizes.
   void resetAll() {
     _currentPixelSizes.clear();
     _currentFractionalSizes.clear();
+    _pendingAutoHideSizes.clear();
+    _autoHideRestoreSizes.clear();
     notifyListeners();
   }
 
