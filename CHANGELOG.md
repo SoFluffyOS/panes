@@ -1,3 +1,18 @@
+## 1.1.0
+
+### Features
+
+- **Drag-to-Reveal** - Continue dragging past the auto-hide threshold to reveal a hidden pane.
+- **Edge Drag Reveal** - Drag from the edge of the screen to reveal a hidden pane (when auto-hide is enabled).
+- **Auto-Hide Size Restoration** - When a pane is auto-hidden and then shown again (via toggle or code), it now restores to its pre-hide size instead of the minimum size.
+- **Real-time Size Updates** - `IdeLayout` now has an `onSizeChanged` callback for tracking pane size changes in real-time.
+
+### Improvements
+
+- **Resizer Visibility** - Resizers remain interactive during drag operations even if adjacent panes are hidden, enabling smooth drag-to-reveal workflows.
+- **Resizer at Edge** - Resizers now stay visible at the container edge when a pane is hidden (if auto-hide is enabled), providing a visual cue and grab target for revealing.
+- **Reliable State Serialization** - Improved `save()` and `load()` to ensure layout state is correctly preserved and restored without unintended mutations.
+
 ## 1.0.0
 
 Initial release of the panes package.
