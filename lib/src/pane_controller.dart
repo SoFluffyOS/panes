@@ -154,9 +154,9 @@ class PaneController extends ChangeNotifier {
             PaneSizePixel(:final pixels) => pixels,
             PaneSizeFraction(:final fraction) => fraction * min,
             null => switch (entry.minSize) {
-              PaneSizePixel(:final pixels) => pixels,
-              _ => 20.0,
-            },
+                PaneSizePixel(:final pixels) => pixels,
+                _ => 20.0,
+              },
           };
 
           // Check if user has dragged back by threshold amount from lowest point
@@ -188,11 +188,12 @@ class PaneController extends ChangeNotifier {
           // Calculate threshold in pixels
           final double threshold = switch (entry.autoHideThreshold) {
             PaneSizePixel(:final pixels) => pixels,
-            PaneSizeFraction(:final fraction) => fraction * min, // fraction of minSize
+            PaneSizeFraction(:final fraction) =>
+              fraction * min, // fraction of minSize
             null => switch (entry.minSize) {
-              PaneSizePixel(:final pixels) => pixels,
-              _ => 20.0,
-            },
+                PaneSizePixel(:final pixels) => pixels,
+                _ => 20.0,
+              },
           };
 
           // Track intended size for detecting when user drags past threshold
@@ -330,16 +331,21 @@ class PaneController extends ChangeNotifier {
   /// Saves the current controller state (sizes and visibility) to a map.
   Map<String, dynamic> save() {
     return {
-      'pixelSizes': _currentPixelSizes,
-      'fractionalSizes': _currentFractionalSizes,
-      'overrides': Map<String, dynamic>.from(
-        _visibilityOverrides,
-      ),
+      'pixelSizes': Map<String, double>.from(_currentPixelSizes),
+      'fractionalSizes': Map<String, double>.from(_currentFractionalSizes),
+      'overrides': Map<String, bool>.from(_visibilityOverrides),
     };
   }
 
   /// Loads the controller state from a map.
   void load(Map<String, dynamic> data) {
+    // Clear transient drag state
+    _pendingAutoHideSizes.clear();
+    _autoHideRestoreSizes.clear();
+    _pendingRevealPanes.clear();
+    _lowestRevealPoint.clear();
+    _revealedDuringDrag.clear();
+
     if (data.containsKey('pixelSizes')) {
       final map = data['pixelSizes'] as Map;
       _currentPixelSizes.clear();
@@ -354,8 +360,6 @@ class PaneController extends ChangeNotifier {
         if (v is num) _currentFractionalSizes[k.toString()] = v.toDouble();
       });
     }
-    // Visibility overrides not yet strictly used for structure changes but
-    // if we add them later:
     if (data.containsKey('overrides')) {
       final map = data['overrides'] as Map;
       _visibilityOverrides.clear();

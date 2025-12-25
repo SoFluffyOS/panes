@@ -162,9 +162,8 @@ class _MultiPaneState extends State<MultiPane> {
             // 1. Both adjacent panes are visible, OR
             // 2. We're actively resizing (to support drag-to-reveal), OR
             // 3. One pane is hidden with autoHide (edge drag to reveal)
-            final bool edgeDragReveal =
-                (entry.autoHide && !isVisible) ||
-                    (nextEntry.autoHide && !nextVisible);
+            final bool edgeDragReveal = (entry.autoHide && !isVisible) ||
+                (nextEntry.autoHide && !nextVisible);
 
             bool resizerVisible =
                 (isVisible && nextVisible) || _isResizing || edgeDragReveal;
