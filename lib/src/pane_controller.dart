@@ -8,6 +8,7 @@ class PaneController extends ChangeNotifier {
 
   final Map<String, double> _currentPixelSizes = {};
   final Map<String, double> _currentFractionalSizes = {};
+  final Map<String, double> _pendingAutoHideSizes = {};
   final Map<String, bool> _visibilityOverrides = {};
 
   /// Creates a [PaneController] with the given list of [entries].
@@ -66,19 +67,6 @@ class PaneController extends ChangeNotifier {
           orElse: () => throw Exception('Pane $id not found'),
         );
 
-        // Auto-Hide Logic
-        if (entry.autoHide) {
-          final threshold = entry.autoHideThreshold ??
-              (switch (entry.minSize) {
-                PaneSizePixel(:final pixels) => pixels,
-                _ => 20.0,
-              });
-          if (size < threshold) {
-            hide(id);
-            return;
-          }
-        }
-
         // Enforce min/max
         double min = 0.0;
         if (entry.minSize case PaneSizePixel(pixels: final p)) {
@@ -90,7 +78,41 @@ class PaneController extends ChangeNotifier {
           max = p;
         }
 
-        if (size < min) size = min;
+        // Auto-Hide Logic
+        if (entry.autoHide) {
+          // Calculate threshold in pixels
+          final double threshold = switch (entry.autoHideThreshold) {
+            PaneSizePixel(:final pixels) => pixels,
+            PaneSizeFraction(:final fraction) => fraction * min, // fraction of minSize
+            null => switch (entry.minSize) {
+              PaneSizePixel(:final pixels) => pixels,
+              _ => 20.0,
+            },
+          };
+
+          // Track intended size for detecting when user drags past threshold
+          // even though visual size stays at minSize
+          if (size < min) {
+            _pendingAutoHideSizes[id] = size;
+            if (size < threshold) {
+              _pendingAutoHideSizes.remove(id);
+              hide(id);
+              return;
+            }
+            // Visual stays at min, but we track the intended size
+            size = min;
+          } else {
+            // Reset tracking when user drags back above minSize
+            _pendingAutoHideSizes.remove(id);
+            if (size < threshold) {
+              hide(id);
+              return;
+            }
+          }
+        } else {
+          if (size < min) size = min;
+        }
+
         if (size > max) size = max;
 
         _currentPixelSizes[id] = size;
@@ -157,7 +179,17 @@ class PaneController extends ChangeNotifier {
   }
 
   /// Gets the current pixel size override for the pane [id], if any.
-  double? getPixelSize(String id) => _currentPixelSizes[id];
+  ///
+  /// When auto-hide is tracking a drag below minSize, returns the pending
+  /// (intended) size so that resize calculations accumulate correctly.
+  double? getPixelSize(String id) =>
+      _pendingAutoHideSizes[id] ?? _currentPixelSizes[id];
+
+  /// Gets the visual pixel size for display purposes.
+  ///
+  /// Unlike [getPixelSize], this always returns the clamped display size,
+  /// ignoring any pending auto-hide tracking.
+  double? getVisualPixelSize(String id) => _currentPixelSizes[id];
 
   /// Gets the current fractional size override for the pane [id], if any.
   double? getFractionalSize(String id) => _currentFractionalSizes[id];

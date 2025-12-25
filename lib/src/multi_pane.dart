@@ -102,8 +102,8 @@ class _MultiPaneState extends State<MultiPane> {
           final isVisible = widget.controller.isVisible(entry.id);
           final childWidget = widget.paneBuilder(context, entry.id);
 
-          // Determine effective size
-          double? pixelSize = widget.controller.getPixelSize(entry.id);
+          // Determine effective size (visual)
+          double? pixelSize = widget.controller.getVisualPixelSize(entry.id);
           double? fractionalSize = widget.controller.getFractionalSize(
             entry.id,
           );
