@@ -163,6 +163,12 @@ typedef IdeMaximizeStateChangedCallback = void Function(
   bool isMaximized,
 );
 
+/// Callback signature for when a pane's size changes.
+typedef IdeSizeChangedCallback = void Function(
+  IdePane pane,
+  double size,
+);
+
 /// A pre-configured layout widget that mimics a standard IDE.
 ///
 /// It provides slots for [leftPanelBuilder], [rightPanelBuilder], [bottomPanelBuilder],
@@ -195,6 +201,11 @@ class IdeLayout extends StatefulWidget {
   /// controllers are in maximized state).
   final IdeMaximizeStateChangedCallback? onMaximizeStateChanged;
 
+  /// Callback invoked when any pane's size changes.
+  ///
+  /// This is called whenever a pane is resized, providing realtime size updates.
+  final IdeSizeChangedCallback? onSizeChanged;
+
   /// Creates an [IdeLayout].
   const IdeLayout({
     super.key,
@@ -206,6 +217,7 @@ class IdeLayout extends StatefulWidget {
     this.animationDuration = const Duration(milliseconds: 250),
     this.onPaneStateChanged,
     this.onMaximizeStateChanged,
+    this.onSizeChanged,
   });
 
   @override
@@ -215,12 +227,14 @@ class IdeLayout extends StatefulWidget {
 class _IdeLayoutState extends State<IdeLayout> {
   late Map<String, bool> _previousVisibility;
   late bool _previousMaximized;
+  late Map<String, double?> _previousSizes;
 
   @override
   void initState() {
     super.initState();
     _previousVisibility = _captureVisibility();
     _previousMaximized = _isFullyMaximized();
+    _previousSizes = _captureSizes();
     widget.controller.rootController.addListener(_onControllerChanged);
     widget.controller.centerController.addListener(_onControllerChanged);
   }
@@ -234,6 +248,7 @@ class _IdeLayoutState extends State<IdeLayout> {
           .removeListener(_onControllerChanged);
       _previousVisibility = _captureVisibility();
       _previousMaximized = _isFullyMaximized();
+      _previousSizes = _captureSizes();
       widget.controller.rootController.addListener(_onControllerChanged);
       widget.controller.centerController.addListener(_onControllerChanged);
     }
@@ -259,6 +274,17 @@ class _IdeLayoutState extends State<IdeLayout> {
     };
   }
 
+  Map<String, double?> _captureSizes() {
+    return {
+      IdePane.left.id:
+          widget.controller.rootController.getVisualPixelSize(IdePane.left.id),
+      IdePane.right.id:
+          widget.controller.rootController.getVisualPixelSize(IdePane.right.id),
+      IdePane.bottom.id: widget.controller.centerController
+          .getVisualPixelSize(IdePane.bottom.id),
+    };
+  }
+
   bool _isFullyMaximized() {
     return widget.controller.rootController.isMaximized &&
         widget.controller.centerController.isMaximized;
@@ -267,6 +293,7 @@ class _IdeLayoutState extends State<IdeLayout> {
   void _onControllerChanged() {
     _checkAndNotifyVisibilityChanges();
     _checkAndNotifyMaximizeChanges();
+    _checkAndNotifySizeChanges();
   }
 
   void _checkAndNotifyVisibilityChanges() {
@@ -309,6 +336,29 @@ class _IdeLayoutState extends State<IdeLayout> {
       callback(currentMaximized);
       _previousMaximized = currentMaximized;
     }
+  }
+
+  void _checkAndNotifySizeChanges() {
+    final callback = widget.onSizeChanged;
+    if (callback == null) return;
+
+    final current = _captureSizes();
+
+    final leftSize = current[IdePane.left.id];
+    final rightSize = current[IdePane.right.id];
+    final bottomSize = current[IdePane.bottom.id];
+
+    if (leftSize != _previousSizes[IdePane.left.id] && leftSize != null) {
+      callback(IdePane.left, leftSize);
+    }
+    if (rightSize != _previousSizes[IdePane.right.id] && rightSize != null) {
+      callback(IdePane.right, rightSize);
+    }
+    if (bottomSize != _previousSizes[IdePane.bottom.id] && bottomSize != null) {
+      callback(IdePane.bottom, bottomSize);
+    }
+
+    _previousSizes = current;
   }
 
   @override
