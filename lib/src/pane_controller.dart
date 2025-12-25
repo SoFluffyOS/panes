@@ -15,6 +15,19 @@ class PaneController extends ChangeNotifier {
   /// This is used to restore the size when the pane is shown again.
   final Map<String, double> _autoHideRestoreSizes = {};
 
+  /// Tracks panes that were auto-hidden during an active drag.
+  /// Maps pane ID to the current virtual position.
+  /// Used by getPixelSize() to return correct position for delta calculations.
+  final Map<String, double> _pendingRevealPanes = {};
+
+  /// Tracks the lowest point reached during drag-to-reveal.
+  /// Used to measure reverse drag delta for reveal threshold.
+  final Map<String, double> _lowestRevealPoint = {};
+
+  /// Tracks panes that were revealed via drag-to-reveal during the current drag.
+  /// These panes skip auto-hide logic until the drag ends to prevent flickering.
+  final Set<String> _revealedDuringDrag = {};
+
   /// Creates a [PaneController] with the given list of [entries].
   PaneController({required List<PaneEntry> entries}) : _entries = entries;
 
@@ -82,7 +95,11 @@ class PaneController extends ChangeNotifier {
 
   /// Clears the saved pre-drag size when a resize drag ends without auto-hide.
   void clearPreDragSize(String id) {
-    // Only clear if the pane is still visible (not auto-hidden)
+    // Clear pending reveal state - drag has ended
+    _pendingRevealPanes.remove(id);
+    _lowestRevealPoint.remove(id);
+    _revealedDuringDrag.remove(id);
+    // Only clear restore size if the pane is still visible (not auto-hidden)
     if (isVisible(id)) {
       _autoHideRestoreSizes.remove(id);
     }
@@ -115,8 +132,52 @@ class PaneController extends ChangeNotifier {
           max = p;
         }
 
-        // Auto-Hide Logic
-        if (entry.autoHide) {
+        // Drag-to-reveal: if pane was auto-hidden during this drag and user
+        // is dragging in reverse direction by at least threshold amount, show it.
+        // getPixelSize() returns _pendingRevealPanes for correct delta calculation.
+        if (_pendingRevealPanes.containsKey(id) && !isVisible(id)) {
+          final lowestPoint = _lowestRevealPoint[id] ?? size;
+
+          // Track the lowest point - if user continues dragging to close
+          if (size < lowestPoint) {
+            _lowestRevealPoint[id] = size;
+          }
+
+          final double threshold = switch (entry.autoHideThreshold) {
+            PaneSizePixel(:final pixels) => pixels,
+            PaneSizeFraction(:final fraction) => fraction * min,
+            null => switch (entry.minSize) {
+              PaneSizePixel(:final pixels) => pixels,
+              _ => 20.0,
+            },
+          };
+
+          // Check if user has dragged back by threshold amount from lowest point
+          final currentLowest = _lowestRevealPoint[id] ?? lowestPoint;
+          final reverseDelta = size - currentLowest;
+
+          if (reverseDelta >= threshold) {
+            _pendingRevealPanes.remove(id);
+            _lowestRevealPoint.remove(id);
+            _revealedDuringDrag.add(id);
+            _visibilityOverrides[id] = true;
+            _currentPixelSizes[id] = size.clamp(min, max);
+            notifyListeners();
+            return;
+          }
+
+          // Always update current position for next delta calculation
+          _pendingRevealPanes[id] = size;
+          return;
+        }
+
+        // Clear the revealed flag once size exceeds min - allows re-hide
+        if (_revealedDuringDrag.contains(id) && size >= min) {
+          _revealedDuringDrag.remove(id);
+        }
+
+        // Auto-Hide Logic (skip for panes just revealed via drag-to-reveal)
+        if (entry.autoHide && !_revealedDuringDrag.contains(id)) {
           // Calculate threshold in pixels
           final double threshold = switch (entry.autoHideThreshold) {
             PaneSizePixel(:final pixels) => pixels,
@@ -133,6 +194,9 @@ class PaneController extends ChangeNotifier {
             _pendingAutoHideSizes[id] = size;
             if (size < threshold) {
               _pendingAutoHideSizes.remove(id);
+              // Mark for potential drag-to-reveal
+              _pendingRevealPanes[id] = size;
+              _lowestRevealPoint[id] = size; // Initialize lowest point
               hide(id);
               return;
             }
@@ -142,6 +206,9 @@ class PaneController extends ChangeNotifier {
             // Reset tracking when user drags back above minSize
             _pendingAutoHideSizes.remove(id);
             if (size < threshold) {
+              // Mark for potential drag-to-reveal
+              _pendingRevealPanes[id] = size;
+              _lowestRevealPoint[id] = size; // Initialize lowest point
               hide(id);
               return;
             }
@@ -209,6 +276,9 @@ class PaneController extends ChangeNotifier {
     _currentFractionalSizes.remove(id);
     _pendingAutoHideSizes.remove(id);
     _autoHideRestoreSizes.remove(id);
+    _pendingRevealPanes.remove(id);
+    _lowestRevealPoint.remove(id);
+    _revealedDuringDrag.remove(id);
     notifyListeners();
   }
 
@@ -220,6 +290,9 @@ class PaneController extends ChangeNotifier {
     _currentFractionalSizes.clear();
     _pendingAutoHideSizes.clear();
     _autoHideRestoreSizes.clear();
+    _pendingRevealPanes.clear();
+    _lowestRevealPoint.clear();
+    _revealedDuringDrag.clear();
     notifyListeners();
   }
 
@@ -227,8 +300,16 @@ class PaneController extends ChangeNotifier {
   ///
   /// When auto-hide is tracking a drag below minSize, returns the pending
   /// (intended) size so that resize calculations accumulate correctly.
-  double? getPixelSize(String id) =>
-      _pendingAutoHideSizes[id] ?? _currentPixelSizes[id];
+  /// When pane is hidden and in pending reveal state, returns the virtual
+  /// position for correct drag delta calculation.
+  double? getPixelSize(String id) {
+    // Return virtual position for hidden panes awaiting reveal
+    final revealSize = _pendingRevealPanes[id];
+    if (revealSize != null && !isVisible(id)) {
+      return revealSize;
+    }
+    return _pendingAutoHideSizes[id] ?? _currentPixelSizes[id];
+  }
 
   /// Gets the visual pixel size for display purposes.
   ///
