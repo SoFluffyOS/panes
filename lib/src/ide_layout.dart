@@ -38,14 +38,35 @@ class IdeController {
   /// The controller for the vertical axis (Editor | Bottom) within the center pane.
   late final PaneController centerController;
 
-  /// Creates an [IdeController] with optional initial sizes for panels.
+  /// Creates an [IdeController] with customizable panel settings.
+  ///
+  /// All size parameters accept [PaneSize] values, which can be either
+  /// [PaneSize.pixel] for fixed pixel sizes or [PaneSize.fraction] for
+  /// proportional sizes.
   IdeController({
+    // Left panel configuration
     PaneSize? leftSize,
+    PaneSize? leftMinSize,
     PaneSize? leftMaxSize,
+    bool leftAutoHide = true,
+    PaneSize? leftAutoHideThreshold,
+    bool leftVisible = true,
+
+    // Right panel configuration
     PaneSize? rightSize,
+    PaneSize? rightMinSize,
     PaneSize? rightMaxSize,
+    bool rightAutoHide = true,
+    PaneSize? rightAutoHideThreshold,
+    bool rightVisible = false,
+
+    // Bottom panel configuration
     PaneSize? bottomSize,
+    PaneSize? bottomMinSize,
     PaneSize? bottomMaxSize,
+    bool bottomAutoHide = true,
+    PaneSize? bottomAutoHideThreshold,
+    bool bottomVisible = false,
   }) {
     // Horizontal: Left | Center | Right
     rootController = PaneController(
@@ -53,11 +74,11 @@ class IdeController {
         PaneEntry(
           id: IdePane.left.id,
           initialSize: leftSize ?? PaneSize.pixel(250),
-          minSize: PaneSize.pixel(100),
+          minSize: leftMinSize ?? PaneSize.pixel(100),
           maxSize: leftMaxSize,
-          autoHide: true,
-          autoHideThreshold: PaneSize.fraction(0.5),
-          visible: true,
+          autoHide: leftAutoHide,
+          autoHideThreshold: leftAutoHideThreshold ?? PaneSize.fraction(0.5),
+          visible: leftVisible,
         ),
         PaneEntry(
           id: IdePane.centerContainer.id,
@@ -66,11 +87,11 @@ class IdeController {
         PaneEntry(
           id: IdePane.right.id,
           initialSize: rightSize ?? PaneSize.pixel(300),
-          minSize: PaneSize.pixel(200),
+          minSize: rightMinSize ?? PaneSize.pixel(200),
           maxSize: rightMaxSize,
-          autoHide: true,
-          autoHideThreshold: PaneSize.fraction(0.5),
-          visible: false,
+          autoHide: rightAutoHide,
+          autoHideThreshold: rightAutoHideThreshold ?? PaneSize.fraction(0.5),
+          visible: rightVisible,
         ),
       ],
     );
@@ -85,11 +106,11 @@ class IdeController {
         PaneEntry(
           id: IdePane.bottom.id,
           initialSize: bottomSize ?? PaneSize.pixel(240),
-          minSize: PaneSize.pixel(50),
+          minSize: bottomMinSize ?? PaneSize.pixel(50),
           maxSize: bottomMaxSize,
-          autoHide: true,
-          autoHideThreshold: PaneSize.fraction(0.5),
-          visible: false,
+          autoHide: bottomAutoHide,
+          autoHideThreshold: bottomAutoHideThreshold ?? PaneSize.fraction(0.5),
+          visible: bottomVisible,
         ),
       ],
     );
