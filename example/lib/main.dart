@@ -161,11 +161,10 @@ class _IdeExampleState extends State<IdeExample> {
   void initState() {
     super.initState();
     _ideController = IdeController(
-      // Demonstrates pixel-based sizing with min/max constraints
-      leftSize: PaneSize.pixel(280),
-      rightSize: PaneSize.pixel(280),
-      // Bottom panel with pixel sizing
-      bottomSize: PaneSize.pixel(200),
+      leftMaxSize: PaneSize.pixel(500),
+      rightMaxSize: PaneSize.pixel(500),
+      bottomMaxSize: PaneSize.pixel(480),
+      bottomAutoHide: false,
     );
     // Show panels by default
     _ideController.rootController.show(IdePane.right.id);
@@ -253,6 +252,12 @@ class _IdeExampleState extends State<IdeExample> {
                                 _isEditorMaximized = false;
                                 _isTerminalMaximized = false;
                               }
+                            });
+                          },
+                          // Use onSizeChanged callback for realtime size updates
+                          onSizeChanged: (pane, size) {
+                            setState(() {
+                              // Rebuild to update size indicators in title bar
                             });
                           },
                           leftPanelBuilder: (context) => _buildLeftPanel(),
@@ -386,11 +391,17 @@ class _IdeExampleState extends State<IdeExample> {
     final leftSize = _ideController.rootController.getPixelSize(
       IdePane.left.id,
     );
+    final rightSize = _ideController.rootController.getPixelSize(
+      IdePane.right.id,
+    );
     final bottomSize = _ideController.centerController.getPixelSize(
       IdePane.bottom.id,
     );
     final leftVisible = _ideController.rootController.isVisible(
       IdePane.left.id,
+    );
+    final rightVisible = _ideController.rootController.isVisible(
+      IdePane.right.id,
     );
     final bottomVisible = _ideController.centerController.isVisible(
       IdePane.bottom.id,
@@ -401,6 +412,8 @@ class _IdeExampleState extends State<IdeExample> {
       children: [
         if (leftVisible && leftSize != null)
           _sizeChip('L: ${leftSize.toInt()}px'),
+        if (rightVisible && rightSize != null)
+          _sizeChip('R: ${rightSize.toInt()}px'),
         if (bottomVisible && bottomSize != null)
           _sizeChip('B: ${bottomSize.toInt()}px'),
         const SizedBox(width: 8),
