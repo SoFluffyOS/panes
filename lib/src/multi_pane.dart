@@ -155,11 +155,19 @@ class _MultiPaneState extends State<MultiPane> {
 
           // Add resizer if not last
           if (i < entries.length - 1) {
-            // Resizer is visible if both adjacent panes are visible,
-            // OR if we're actively resizing (to support drag-to-reveal)
+            final nextEntry = entries[i + 1];
+            final nextVisible = widget.controller.isVisible(nextEntry.id);
+
+            // Resizer is visible if:
+            // 1. Both adjacent panes are visible, OR
+            // 2. We're actively resizing (to support drag-to-reveal), OR
+            // 3. One pane is hidden with autoHide (edge drag to reveal)
+            final bool edgeDragReveal =
+                (entry.autoHide && !isVisible) ||
+                    (nextEntry.autoHide && !nextVisible);
+
             bool resizerVisible =
-                (isVisible && widget.controller.isVisible(entries[i + 1].id)) ||
-                    _isResizing;
+                (isVisible && nextVisible) || _isResizing || edgeDragReveal;
 
             children.add(
               AnimatedContainer(

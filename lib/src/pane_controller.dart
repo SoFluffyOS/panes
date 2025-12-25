@@ -82,14 +82,21 @@ class PaneController extends ChangeNotifier {
   /// This should be called when a resize drag starts on a pane with auto-hide
   /// enabled. If the pane is later auto-hidden during the drag, this size
   /// will be restored when the pane is shown again.
+  /// Also initializes reveal tracking for hidden panes (edge drag to reveal).
   void savePreDragSize(String id) {
     final entry = _entries.firstWhere(
       (e) => e.id == id,
       orElse: () => throw Exception('Pane $id not found'),
     );
     if (entry.autoHide) {
-      _autoHideRestoreSizes[id] =
-          _currentPixelSizes[id] ?? entry.initialSize.size;
+      // If pane is hidden, initialize for edge-drag-to-reveal
+      if (!isVisible(id)) {
+        _pendingRevealPanes[id] = 0; // Start from 0 (hidden state)
+        _lowestRevealPoint[id] = 0;
+      } else {
+        _autoHideRestoreSizes[id] =
+            _currentPixelSizes[id] ?? entry.initialSize.size;
+      }
     }
   }
 
