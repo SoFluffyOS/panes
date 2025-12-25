@@ -57,6 +57,9 @@ class PaneController extends ChangeNotifier {
     switch (newSize) {
       case PaneSizePixel(:final pixels):
         var size = pixels;
+        if (size < 0) {
+          size = 0;
+        }
 
         final entry = _entries.firstWhere(
           (e) => e.id == id,
