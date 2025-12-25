@@ -53,7 +53,7 @@ void main() {
           id: '1',
           initialSize: PaneSize.pixel(100),
           autoHide: true,
-          autoHideThreshold: 50,
+          autoHideThreshold: PaneSize.pixel(50),
         ),
       ],
     );

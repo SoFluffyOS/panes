@@ -194,7 +194,7 @@ void main() {
             id: 'a',
             initialSize: PaneSize.pixel(100),
             autoHide: true,
-            autoHideThreshold: 50,
+            autoHideThreshold: PaneSize.pixel(50),
           ),
           PaneEntry(id: 'b', initialSize: PaneSize.fraction(1.0)),
         ],

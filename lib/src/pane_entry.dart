@@ -22,10 +22,11 @@ class PaneEntry {
   /// Whether the pane should automatically hide when resized below a threshold.
   final bool autoHide;
 
-  /// The pixel threshold for auto-hiding.
+  /// The threshold for auto-hiding.
   ///
-  /// If null, a default value (e.g., 20.0 or minSize) is used.
-  final double? autoHideThreshold;
+  /// Can be a pixel value or a fraction. If null, defaults to [minSize]
+  /// (or 20.0 pixels if minSize is also not set).
+  final PaneSize? autoHideThreshold;
 
   /// Creates a [PaneEntry].
   const PaneEntry({
@@ -46,7 +47,7 @@ class PaneEntry {
     PaneSize? minSize,
     PaneSize? maxSize,
     bool? autoHide,
-    double? autoHideThreshold,
+    PaneSize? autoHideThreshold,
   }) {
     return PaneEntry(
       id: id ?? this.id,
