@@ -41,8 +41,11 @@ class IdeController {
   /// Creates an [IdeController] with optional initial sizes for panels.
   IdeController({
     PaneSize? leftSize,
+    PaneSize? leftMaxSize,
     PaneSize? rightSize,
+    PaneSize? rightMaxSize,
     PaneSize? bottomSize,
+    PaneSize? bottomMaxSize,
   }) {
     // Horizontal: Left | Center | Right
     rootController = PaneController(
@@ -50,9 +53,10 @@ class IdeController {
         PaneEntry(
           id: IdePane.left.id,
           initialSize: leftSize ?? PaneSize.pixel(250),
-          minSize: PaneSize.pixel(50),
+          minSize: PaneSize.pixel(100),
+          maxSize: leftMaxSize,
           autoHide: true,
-          autoHideThreshold: 50,
+          autoHideThreshold: PaneSize.fraction(0.5),
           visible: true,
         ),
         PaneEntry(
@@ -62,6 +66,10 @@ class IdeController {
         PaneEntry(
           id: IdePane.right.id,
           initialSize: rightSize ?? PaneSize.pixel(300),
+          minSize: PaneSize.pixel(200),
+          maxSize: rightMaxSize,
+          autoHide: true,
+          autoHideThreshold: PaneSize.fraction(0.5),
           visible: false,
         ),
       ],
@@ -76,7 +84,11 @@ class IdeController {
         ),
         PaneEntry(
           id: IdePane.bottom.id,
-          initialSize: bottomSize ?? PaneSize.pixel(200),
+          initialSize: bottomSize ?? PaneSize.pixel(240),
+          minSize: PaneSize.pixel(50),
+          maxSize: bottomMaxSize,
+          autoHide: true,
+          autoHideThreshold: PaneSize.fraction(0.5),
           visible: false,
         ),
       ],
