@@ -55,7 +55,8 @@
 /// ## Interactive Features Demonstrated
 /// - Drag resizers to resize panels (mouse & keyboard accessibility)
 /// - Double-tap resizers to reset sizes to initial values
-/// - Resize beyond threshold triggers auto-hide (left panel has autoHide enabled)
+/// - Resize beyond threshold triggers auto-hide (all panels have autoHide enabled)
+/// - Drag-to-reveal: drag resizer from edge to reveal hidden panels
 /// - Tab key to focus resizers, arrow keys to resize
 /// - Title bar buttons for save/load, reset, and maximize features
 /// - Panel headers with maximize and close buttons
@@ -164,7 +165,6 @@ class _IdeExampleState extends State<IdeExample> {
       leftMaxSize: PaneSize.pixel(500),
       rightMaxSize: PaneSize.pixel(500),
       bottomMaxSize: PaneSize.pixel(480),
-      bottomAutoHide: false,
     );
     // Show panels by default
     _ideController.rootController.show(IdePane.right.id);
