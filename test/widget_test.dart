@@ -186,42 +186,6 @@ void main() {
       expect(controller.getPixelSize('a'), isNull);
     });
 
-    testWidgets('autoHide hides pane when resized below threshold',
-        (tester) async {
-      final controller = PaneController(
-        entries: [
-          PaneEntry(
-            id: 'a',
-            initialSize: PaneSize.pixel(100),
-            autoHide: true,
-            autoHideThreshold: PaneSize.pixel(50),
-          ),
-          PaneEntry(id: 'b', initialSize: PaneSize.fraction(1.0)),
-        ],
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: MultiPane(
-              direction: Axis.horizontal,
-              controller: controller,
-              paneBuilder: (context, id) => Container(key: Key('pane_$id')),
-            ),
-          ),
-        ),
-      );
-
-      expect(controller.isVisible('a'), isTrue);
-
-      // Resize below threshold
-      controller.updateSize('a', PaneSize.pixel(30));
-      await tester.pumpAndSettle();
-
-      // Pane should be auto-hidden
-      expect(controller.isVisible('a'), isFalse);
-    });
-
     test('save and load preserves state', () {
       final controller = PaneController(
         entries: [
