@@ -46,6 +46,13 @@ class _ResizerState extends State<Resizer> {
   bool _isHovering = false;
   bool _isFocused = false;
 
+  /// Track the start position for accurate total delta calculation.
+  /// Using start position prevents drift from accumulated floating point errors.
+  Offset? _startGlobalPosition;
+
+  /// Accumulated delta reported to parent (for comparing with total).
+  double _reportedDelta = 0;
+
   late final Map<ShortcutActivator, VoidCallback> _keyBindings;
 
   @override
@@ -121,23 +128,42 @@ class _ResizerState extends State<Resizer> {
           onExit: (_) => setState(() => _isHovering = false),
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
-            onPanStart: (_) {
+            onPanStart: (details) {
               setState(() => _isDragging = true);
+              _startGlobalPosition = details.globalPosition;
+              _reportedDelta = 0;
               widget.onResizeStart?.call();
             },
             onPanEnd: (_) {
               setState(() => _isDragging = false);
+              _startGlobalPosition = null;
+              _reportedDelta = 0;
               widget.onResizeEnd?.call();
             },
             onPanCancel: () {
               setState(() => _isDragging = false);
+              _startGlobalPosition = null;
+              _reportedDelta = 0;
               widget.onResizeEnd?.call();
             },
             onPanUpdate: (details) {
-              final delta = widget.direction == Axis.horizontal
-                  ? details.delta.dx
-                  : details.delta.dy;
-              widget.onResize(delta);
+              final currentGlobal = details.globalPosition;
+              final startGlobal = _startGlobalPosition ?? currentGlobal;
+
+              // Calculate total delta from start position (more accurate than
+              // accumulating incremental deltas, prevents floating point drift)
+              final totalDelta = widget.direction == Axis.horizontal
+                  ? currentGlobal.dx - startGlobal.dx
+                  : currentGlobal.dy - startGlobal.dy;
+
+              // Calculate incremental delta to report (difference from what
+              // we've already reported ensures no updates are lost)
+              final incrementalDelta = totalDelta - _reportedDelta;
+              _reportedDelta = totalDelta;
+
+              if (incrementalDelta != 0) {
+                widget.onResize(incrementalDelta);
+              }
             },
             onDoubleTap: widget.onDoubleTap,
             child: Container(

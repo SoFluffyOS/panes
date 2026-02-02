@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:panes/src/pane_controller.dart';
-import 'package:panes/src/pane_entry.dart';
 import 'package:panes/src/pane_size.dart';
 import 'package:panes/src/pane_theme.dart';
 import 'package:panes/src/resizer.dart';
@@ -67,7 +66,6 @@ class _MultiPaneState extends State<MultiPane> {
     setState(() {});
   }
 
-  bool _isResizing = false;
   Size _containerSize = Size.zero;
 
   @override
@@ -97,6 +95,9 @@ class _MultiPaneState extends State<MultiPane> {
         final theme = PaneTheme.of(context);
         final resizerSize = theme.resizerHitTestThickness;
 
+        // Use controller's isResizing state
+        final isResizing = widget.controller.isResizing;
+
         for (int i = 0; i < entries.length; i++) {
           final entry = entries[i];
           final isVisible = widget.controller.isVisible(entry.id);
@@ -119,8 +120,7 @@ class _MultiPaneState extends State<MultiPane> {
 
           Widget wrappedChild = switch (effectiveSize) {
             PaneSizePixel(:final pixels) => AnimatedContainer(
-                duration:
-                    _isResizing ? Duration.zero : widget.animationDuration,
+                duration: isResizing ? Duration.zero : widget.animationDuration,
                 curve: widget.animationCurve,
                 width: widget.direction == Axis.horizontal
                     ? (isVisible ? pixels : 0)
@@ -166,12 +166,11 @@ class _MultiPaneState extends State<MultiPane> {
                 (nextEntry.autoHide && !nextVisible);
 
             bool resizerVisible =
-                (isVisible && nextVisible) || _isResizing || edgeDragReveal;
+                (isVisible && nextVisible) || isResizing || edgeDragReveal;
 
             children.add(
               AnimatedContainer(
-                duration:
-                    _isResizing ? Duration.zero : widget.animationDuration,
+                duration: isResizing ? Duration.zero : widget.animationDuration,
                 curve: widget.animationCurve,
                 width: widget.direction == Axis.horizontal
                     ? (resizerVisible ? resizerSize : 0)
@@ -187,29 +186,23 @@ class _MultiPaneState extends State<MultiPane> {
                   child: Resizer(
                     direction: widget.direction,
                     onResize: (delta) {
-                      _handleResize(entry, i, entries, delta);
+                      _handleResize(entry.id, nextEntry.id, delta, resizerSize);
                     },
                     onResizeStart: () {
-                      setState(() => _isResizing = true);
-                      // Save sizes for both adjacent panes in case of auto-hide
-                      widget.controller.savePreDragSize(entry.id);
-                      if (i + 1 < entries.length) {
-                        widget.controller.savePreDragSize(entries[i + 1].id);
-                      }
+                      widget.controller.beginResize(
+                        entry.id,
+                        adjacentPaneId: nextEntry.id,
+                      );
                     },
                     onResizeEnd: () {
-                      setState(() => _isResizing = false);
-                      // Clear saved sizes if not auto-hidden
-                      widget.controller.clearPreDragSize(entry.id);
-                      if (i + 1 < entries.length) {
-                        widget.controller.clearPreDragSize(entries[i + 1].id);
-                      }
+                      widget.controller.endResize(
+                        entry.id,
+                        adjacentPaneId: nextEntry.id,
+                      );
                     },
                     onDoubleTap: () {
                       widget.controller.resetSize(entry.id);
-                      if (i + 1 < entries.length) {
-                        widget.controller.resetSize(entries[i + 1].id);
-                      }
+                      widget.controller.resetSize(nextEntry.id);
                     },
                   ),
                 ),
@@ -228,99 +221,21 @@ class _MultiPaneState extends State<MultiPane> {
   }
 
   void _handleResize(
-    PaneEntry entry,
-    int entryIndex,
-    List<PaneEntry> allEntries,
+    String paneId,
+    String adjacentPaneId,
     double delta,
+    double resizerSize,
   ) {
-    if (delta == 0) return;
+    final containerSize = widget.direction == Axis.horizontal
+        ? _containerSize.width
+        : _containerSize.height;
 
-    // 1. Pixel Resize
-    double? currentPixel = widget.controller.getPixelSize(entry.id);
-    if (currentPixel != null || entry.initialSize is PaneSizePixel) {
-      double size = currentPixel ?? entry.initialSize.size;
-      widget.controller.updateSize(entry.id, PaneSize.pixel(size + delta));
-      return;
-    }
-
-    // 2. Fractional Resize
-    if (entryIndex + 1 >= allEntries.length) return;
-    final nextEntry = allEntries[entryIndex + 1];
-
-    double? nextPixel = widget.controller.getPixelSize(nextEntry.id);
-    if (nextPixel != null || nextEntry.initialSize is PaneSizePixel) {
-      // Resize the NEXT pane, but with negative delta
-      double size = nextPixel ?? nextEntry.initialSize.size;
-      widget.controller.updateSize(nextEntry.id, PaneSize.pixel(size - delta));
-      return;
-    }
-
-    // Case: Flex | Divider | Flex
-    // We need to convert delta(pixels) to delta(flex).
-
-    double totalFixedSize = 0;
-    double totalFlexSum = 0;
-
-    for (var e in allEntries) {
-      double? p = widget.controller.getPixelSize(e.id);
-      if (p != null) {
-        totalFixedSize += p;
-      } else if (e.initialSize case PaneSizePixel(:final pixels)) {
-        totalFixedSize += pixels;
-      } else {
-        // Flex
-        double? f = widget.controller.getFractionalSize(e.id);
-        totalFlexSum += f ?? e.initialSize.size;
-      }
-    }
-
-    double flexSpace = (widget.direction == Axis.horizontal
-            ? _containerSize.width
-            : _containerSize.height) -
-        totalFixedSize;
-    if (flexSpace <= 0) return;
-
-    double deltaFlex = (delta * totalFlexSum) / flexSpace;
-
-    // Enforce Constraints
-    double currentFlex =
-        widget.controller.getFractionalSize(entry.id) ?? entry.initialSize.size;
-    double nextFlex = widget.controller.getFractionalSize(nextEntry.id) ??
-        nextEntry.initialSize.size;
-
-    // 1. Calculate Min Flex for Entry
-    double entryMinFlex = 0;
-    if (entry.minSize case final minSize?) {
-      entryMinFlex = switch (minSize) {
-        PaneSizePixel(:final pixels) => (pixels * totalFlexSum) / flexSpace,
-        PaneSizeFraction(:final fraction) => fraction,
-      };
-    }
-
-    // 2. Calculate Min Flex for Next Entry
-    double nextEntryMinFlex = 0;
-    if (nextEntry.minSize case final minSize?) {
-      nextEntryMinFlex = switch (minSize) {
-        PaneSizePixel(:final pixels) => (pixels * totalFlexSum) / flexSpace,
-        PaneSizeFraction(:final fraction) => fraction,
-      };
-    }
-
-    // 3. Clamp Delta
-    double minDeltaFlex = entryMinFlex - currentFlex;
-    double maxDeltaFlex = nextFlex - nextEntryMinFlex;
-
-    if (deltaFlex < minDeltaFlex) deltaFlex = minDeltaFlex;
-    if (deltaFlex > maxDeltaFlex) deltaFlex = maxDeltaFlex;
-    widget.controller.updateSize(
-      entry.id,
-      PaneSize.fraction(currentFlex + deltaFlex),
-    );
-
-    // Update Next Entry
-    widget.controller.updateSize(
-      nextEntry.id,
-      PaneSize.fraction(nextFlex - deltaFlex),
+    widget.controller.resize(
+      paneId: paneId,
+      delta: delta,
+      containerSize: containerSize,
+      resizerThickness: resizerSize,
+      adjacentPaneId: adjacentPaneId,
     );
   }
 }
