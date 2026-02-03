@@ -1,3 +1,7 @@
+## 1.1.1
+
+- 🐛 Fix various resize and auto hide issues (#1) – thanks to @khoadng
+
 ## 1.1.0
 
 ### Features
