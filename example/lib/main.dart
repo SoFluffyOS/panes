@@ -65,6 +65,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:panes/panes.dart';
 
+import 'cascade_demo.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -162,9 +164,19 @@ class _IdeExampleState extends State<IdeExample> {
   void initState() {
     super.initState();
     _ideController = IdeController(
+      leftSize: PaneSize.pixel(250),
+      leftMinSize: PaneSize.pixel(150),
       leftMaxSize: PaneSize.pixel(500),
+      leftResizeBehavior: ResizeBehavior.eager,
+      rightSize: PaneSize.pixel(300),
+      rightMinSize: PaneSize.pixel(150),
       rightMaxSize: PaneSize.pixel(500),
-      bottomMaxSize: PaneSize.pixel(480),
+      rightResizeBehavior: ResizeBehavior.eager,
+      bottomSize: PaneSize.fraction(0.5),
+      bottomMinSize: PaneSize.pixel(50),
+      bottomAutoHide: true,
+      bottomAutoHideThreshold: PaneSize.fraction(0.5),
+      bottomResizeBehavior: ResizeBehavior.eager,
     );
     // Show panels by default
     _ideController.rootController.show(IdePane.right.id);
@@ -239,8 +251,7 @@ class _IdeExampleState extends State<IdeExample> {
                               // which pane ID is set in each controller
                               if (isMaximized) {
                                 final centerMaxId = _ideController
-                                    .centerController
-                                    .maximizedPaneId;
+                                    .centerController.maximizedPaneId;
                                 if (centerMaxId == IdePane.bottom.id) {
                                   _isTerminalMaximized = true;
                                   _isEditorMaximized = false;
@@ -348,6 +359,15 @@ class _IdeExampleState extends State<IdeExample> {
               ),
             ),
           ),
+          // Cascade demo button
+          _titleBarAction(
+            Icons.swap_horiz,
+            'Cascade Resize Demo',
+            () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CascadeDemo()),
+            ),
+          ),
+          const SizedBox(width: 8),
           // Toggle buttons for panels (right side)
           _titleBarAction(
             Icons.terminal,
@@ -1047,68 +1067,68 @@ class _IdeExampleState extends State<IdeExample> {
   }
 
   Widget _keyword(String text) => Text(
-    text,
-    style: const TextStyle(
-      color: IdeColors.keyword,
-      fontSize: 13,
-      fontFamily: 'JetBrains Mono',
-      height: 1.5,
-    ),
-  );
+        text,
+        style: const TextStyle(
+          color: IdeColors.keyword,
+          fontSize: 13,
+          fontFamily: 'JetBrains Mono',
+          height: 1.5,
+        ),
+      );
   Widget _string(String text) => Text(
-    text,
-    style: const TextStyle(
-      color: IdeColors.string,
-      fontSize: 13,
-      fontFamily: 'JetBrains Mono',
-      height: 1.5,
-    ),
-  );
+        text,
+        style: const TextStyle(
+          color: IdeColors.string,
+          fontSize: 13,
+          fontFamily: 'JetBrains Mono',
+          height: 1.5,
+        ),
+      );
   Widget _comment(String text) => Text(
-    text,
-    style: const TextStyle(
-      color: IdeColors.comment,
-      fontSize: 13,
-      fontFamily: 'JetBrains Mono',
-      height: 1.5,
-    ),
-  );
+        text,
+        style: const TextStyle(
+          color: IdeColors.comment,
+          fontSize: 13,
+          fontFamily: 'JetBrains Mono',
+          height: 1.5,
+        ),
+      );
   Widget _function(String text) => Text(
-    text,
-    style: const TextStyle(
-      color: IdeColors.function,
-      fontSize: 13,
-      fontFamily: 'JetBrains Mono',
-      height: 1.5,
-    ),
-  );
+        text,
+        style: const TextStyle(
+          color: IdeColors.function,
+          fontSize: 13,
+          fontFamily: 'JetBrains Mono',
+          height: 1.5,
+        ),
+      );
   Widget _type(String text) => Text(
-    text,
-    style: const TextStyle(
-      color: IdeColors.type,
-      fontSize: 13,
-      fontFamily: 'JetBrains Mono',
-      height: 1.5,
-    ),
-  );
+        text,
+        style: const TextStyle(
+          color: IdeColors.type,
+          fontSize: 13,
+          fontFamily: 'JetBrains Mono',
+          height: 1.5,
+        ),
+      );
   Widget _variable(String text) => Text(
-    text,
-    style: const TextStyle(
-      color: IdeColors.variable,
-      fontSize: 13,
-      fontFamily: 'JetBrains Mono',
-      height: 1.5,
-    ),
-  );
+        text,
+        style: const TextStyle(
+          color: IdeColors.variable,
+          fontSize: 13,
+          fontFamily: 'JetBrains Mono',
+          height: 1.5,
+        ),
+      );
   Widget _plain(String text) => Text(
-    text,
-    style: const TextStyle(
-      color: IdeColors.text,
-      fontSize: 13,
-      fontFamily: 'JetBrains Mono',
-      height: 1.5,
-    ),
-  );
+        text,
+        style: const TextStyle(
+          color: IdeColors.text,
+          fontSize: 13,
+          fontFamily: 'JetBrains Mono',
+          height: 1.5,
+        ),
+      );
 
   Widget _buildRightPanel() {
     // Fleet style: outline panel with rounded corners

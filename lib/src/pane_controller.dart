@@ -145,12 +145,16 @@ class PaneController extends ChangeNotifier {
   ///
   /// Handles pixel panes, fractional panes, and auto-hide behavior.
   /// All constraint enforcement happens here.
+  ///
+  /// [resizerIndex] is optional and used for cascade resize operations.
+  /// If not provided, it will be calculated from [paneId] (resizer is after the pane).
   void resize({
     required String paneId,
     required double delta,
     required double containerSize,
     required double resizerThickness,
     String? adjacentPaneId,
+    int? resizerIndex,
   }) {
     if (delta == 0) return;
 
@@ -163,12 +167,23 @@ class PaneController extends ChangeNotifier {
       getCurrentFraction: (id) => _fractionalSizes[id],
     );
 
+    // Calculate resizer index if not provided
+    // The resizer is positioned after the pane with paneId
+    final effectiveResizerIndex =
+        resizerIndex ?? _entries.indexWhere((e) => e.id == paneId);
+
     // Determine if this is a pixel or fractional resize
     final isPixelPane =
         _pixelSizes[paneId] != null || entry.initialSize is PaneSizePixel;
 
     if (isPixelPane) {
-      _resizePixelPane(paneId, entry, delta, context);
+      _resizePixelPane(
+        paneId,
+        entry,
+        delta,
+        context,
+        resizerIndex: effectiveResizerIndex,
+      );
     } else if (adjacentPaneId != null) {
       // Check if adjacent pane is pixel-sized
       final adjacentEntry = _getEntry(adjacentPaneId);
@@ -176,8 +191,29 @@ class PaneController extends ChangeNotifier {
           adjacentEntry.initialSize is PaneSizePixel;
 
       if (isAdjacentPixel) {
-        // Resize the adjacent pixel pane with negative delta
-        _resizePixelPane(adjacentPaneId, adjacentEntry, -delta, context);
+        // When resizing a fractional pane adjacent to a pixel pane,
+        // we need to respect the fractional pane's min/max constraints.
+        // The fractional pane grows/shrinks opposite to the pixel pane.
+        final fractionalCurrentSize =
+            _getPixelSizeForCalculation(paneId) ??
+            ResizeCalculator.toPixels(entry.initialSize, context);
+        final fractionalNewSize = fractionalCurrentSize + delta;
+
+        final minSize = ResizeCalculator.getMinPixels(entry, context);
+        final maxSize = ResizeCalculator.getMaxPixels(entry, context);
+        final clampedFractionalSize = fractionalNewSize.clamp(minSize, maxSize);
+        final clampedDelta = clampedFractionalSize - fractionalCurrentSize;
+
+        // Resize the adjacent pixel pane with the clamped negative delta
+        // Note: adjacent pane is AFTER the resizer, so cascade direction is flipped
+        _resizePixelPane(
+          adjacentPaneId,
+          adjacentEntry,
+          -clampedDelta,
+          context,
+          resizerIndex: effectiveResizerIndex,
+          isAfterResizer: true,
+        );
       } else {
         // Both are fractional
         _resizeFractionalPanes(
@@ -198,8 +234,10 @@ class PaneController extends ChangeNotifier {
     String id,
     PaneEntry entry,
     double delta,
-    ResizeContext context,
-  ) {
+    ResizeContext context, {
+    int? resizerIndex,
+    bool isAfterResizer = false,
+  }) {
     // Use virtual position if we're in overshoot/undershoot, otherwise actual size
     final currentSize = _maxOvershootPositions[id] ??
         _minUndershootPositions[id] ??
@@ -212,17 +250,46 @@ class PaneController extends ChangeNotifier {
 
     // Handle max overshoot - track virtual position, clamp display to max
     if (requestedSize > maxSize) {
+      final overflow = requestedSize - maxSize;
+
+      // Set the new size FIRST, then rebuild context for cascade
       _maxOvershootPositions[id] = requestedSize;
       _minUndershootPositions.remove(id);
       _pixelSizes[id] = maxSize;
       if (entry.autoHide) {
         _autoHideStates[id] = AutoHideVisible(pixelSize: maxSize);
       }
+
+      // Try to cascade the overflow to other panes with UPDATED context
+      // NOTE: Fixed panes do NOT cascade - they just stop at their constraints
+      if (resizerIndex != null &&
+          entry.effectiveResizeBehavior != ResizeBehavior.fixed) {
+        final updatedContext = ResizeCalculator.buildContext(
+          entries: _entries,
+          containerSize: context.containerSize,
+          resizerThickness: context.resizerThickness,
+          getCurrentPixelSize: _getPixelSizeForCalculation,
+          getCurrentFraction: (id) => _fractionalSizes[id],
+        );
+        _cascadeResize(
+          resizerIndex: resizerIndex,
+          delta: overflow,
+          context: updatedContext,
+          // When pane is AFTER resizer, flip cascade direction
+          // (overflow needs to go to panes BEFORE resizer, not after)
+          flipDirection: isAfterResizer,
+        );
+      }
+
       return;
     }
 
     // Handle min undershoot for non-auto-hide panes
     // (auto-hide panes have their own below-min tracking)
+    //
+    // NOTE: We do NOT cascade on undershoot. When a pane hits its min,
+    // the resize stops. The "virtual" space below min doesn't actually
+    // exist, so there's nothing to distribute to other panes.
     if (!entry.autoHide && requestedSize < minSize) {
       _minUndershootPositions[id] = requestedSize;
       _maxOvershootPositions.remove(id);
@@ -320,6 +387,153 @@ class PaneController extends ChangeNotifier {
 
     _fractionalSizes[id1] = newFrac1;
     _fractionalSizes[id2] = newFrac2;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cascade Resize
+  // ---------------------------------------------------------------------------
+
+  /// Collects panes for cascade resize in the given direction.
+  ///
+  /// [resizerIndex] is the index of the resizer being dragged (0-based).
+  /// [forward] determines direction: true = higher indices, false = lower indices.
+  ///
+  /// Returns entries sorted by resize behavior priority:
+  /// 1. Eager panes first (absorb delta first)
+  /// 2. Reluctant panes last (absorb delta after eager exhausted)
+  /// 3. Fixed panes are excluded entirely
+  ///
+  /// IMPORTANT: Collection stops when encountering a fractional pane.
+  /// Fractional panes naturally handle redistribution through the flex layout,
+  /// so we don't cascade "through" them to reach panes on the other side.
+  List<PaneEntry> _collectCascadeTargets({
+    required int resizerIndex,
+    required bool forward,
+  }) {
+    final List<PaneEntry> targets = [];
+
+    if (forward) {
+      // Collect panes from resizer+1 to end
+      for (int i = resizerIndex + 1; i < _entries.length; i++) {
+        final entry = _entries[i];
+        // Stop at fractional panes - they handle redistribution naturally
+        final isPixelPane =
+            _pixelSizes[entry.id] != null || entry.initialSize is PaneSizePixel;
+        if (!isPixelPane) break;
+
+        if (entry.effectiveResizeBehavior != ResizeBehavior.fixed) {
+          targets.add(entry);
+        }
+      }
+    } else {
+      // Collect panes from resizer down to 0 (in reverse order)
+      for (int i = resizerIndex; i >= 0; i--) {
+        final entry = _entries[i];
+        // Stop at fractional panes - they handle redistribution naturally
+        final isPixelPane =
+            _pixelSizes[entry.id] != null || entry.initialSize is PaneSizePixel;
+        if (!isPixelPane) break;
+
+        if (entry.effectiveResizeBehavior != ResizeBehavior.fixed) {
+          targets.add(entry);
+        }
+      }
+    }
+
+    // Sort by behavior: eager first, then reluctant
+    targets.sort((a, b) {
+      final aBehavior = a.effectiveResizeBehavior;
+      final bBehavior = b.effectiveResizeBehavior;
+      if (aBehavior == ResizeBehavior.eager &&
+          bBehavior == ResizeBehavior.reluctant) {
+        return -1;
+      }
+      if (aBehavior == ResizeBehavior.reluctant &&
+          bBehavior == ResizeBehavior.eager) {
+        return 1;
+      }
+      return 0;
+    });
+
+    return targets;
+  }
+
+  /// Cascades resize delta through multiple panes.
+  ///
+  /// When a pane hits its constraint, remaining delta flows to the next pane.
+  /// Panes are processed in priority order (eager before reluctant).
+  ///
+  /// [resizerIndex] is the index of the resizer being dragged.
+  /// [delta] is positive when increasing size in the forward direction.
+  /// [flipDirection] reverses the cascade direction (used when resizing pane
+  /// after the resizer instead of before).
+  double _cascadeResize({
+    required int resizerIndex,
+    required double delta,
+    required ResizeContext context,
+    bool flipDirection = false,
+  }) {
+    if (delta == 0) return 0;
+
+    // Determine direction based on delta sign
+    // Positive delta = panes before resizer grow, panes after shrink
+    // For cascade: we cascade to panes that need to absorb the opposite effect
+    //
+    // When flipDirection is true (resizing pane AFTER resizer):
+    // - Positive delta (growing) needs to take space from panes BEFORE resizer
+    // - So we flip: forward becomes !forward
+    var forward = delta > 0;
+    if (flipDirection) forward = !forward;
+
+    // The "absorbing" panes are those that shrink to allow growth
+    final targets = _collectCascadeTargets(
+      resizerIndex: resizerIndex,
+      forward: forward,
+    );
+
+    if (targets.isEmpty) return delta;
+
+    var remainingDelta = delta.abs();
+
+    // Only cascade to pixel panes - fractional panes handle redistribution
+    // automatically through the flex layout system
+    final pixelTargets = targets
+        .where((e) =>
+            _pixelSizes[e.id] != null || e.initialSize is PaneSizePixel)
+        .toList();
+
+    // Try to absorb with pixel panes (one at a time)
+    for (final entry in pixelTargets) {
+      if (remainingDelta <= 0) break;
+
+      final currentSize = _getPixelSizeForCalculation(entry.id) ??
+          entry.initialSize.size;
+
+      final (absorbed, remaining) = ResizeCalculator.calculateAbsorption(
+        currentSize: currentSize,
+        delta: -remainingDelta,
+        entry: entry,
+        context: context,
+      );
+
+      if (absorbed.abs() > 0) {
+        _pixelSizes[entry.id] = currentSize + absorbed;
+      }
+
+      remainingDelta = remaining.abs();
+    }
+
+    // NOTE: We do NOT cascade to fractional panes.
+    // The flex layout automatically redistributes space when flexSpace changes.
+    // Explicitly modifying _fractionalSizes during cascade would lock the
+    // fractions to specific values and break subsequent resize operations.
+    //
+    // Fractional panes naturally absorb overflow/underflow through the flex
+    // system without needing explicit cascade handling.
+
+    // Return consumed delta (original minus remaining, with original sign)
+    final consumed = delta.abs() - remainingDelta;
+    return delta > 0 ? consumed : -consumed;
   }
 
   // ---------------------------------------------------------------------------

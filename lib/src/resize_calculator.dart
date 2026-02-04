@@ -204,6 +204,30 @@ class ResizeCalculator {
     return (currentFraction1 + deltaFlex, currentFraction2 - deltaFlex);
   }
 
+  /// Calculates how much delta a pane can absorb given its constraints.
+  ///
+  /// Returns (absorbed, remaining) where:
+  /// - absorbed: the portion of delta that was applied to this pane
+  /// - remaining: the leftover delta to cascade to the next pane
+  ///
+  /// A positive delta increases the pane size; negative decreases it.
+  static (double absorbed, double remaining) calculateAbsorption({
+    required double currentSize,
+    required double delta,
+    required PaneEntry entry,
+    required ResizeContext context,
+  }) {
+    final minSize = getMinPixels(entry, context);
+    final maxSize = getMaxPixels(entry, context);
+
+    final requestedSize = currentSize + delta;
+    final clampedSize = requestedSize.clamp(minSize, maxSize);
+    final absorbed = clampedSize - currentSize;
+    final remaining = delta - absorbed;
+
+    return (absorbed, remaining);
+  }
+
   /// Builds a [ResizeContext] from a list of entries and their current sizes.
   ///
   /// [getCurrentPixelSize] should return the current pixel size override, or null.
@@ -219,15 +243,20 @@ class ResizeCalculator {
     double totalFlexSum = 0;
 
     for (final entry in entries) {
-      final pixelSize = getCurrentPixelSize(entry.id);
-      if (pixelSize != null) {
-        totalFixedSize += pixelSize;
-      } else if (entry.initialSize case PaneSizePixel(:final pixels)) {
-        totalFixedSize += pixels;
-      } else {
-        // Flex pane
+      // Check entry type FIRST - fractional panes stay fractional even if
+      // auto-hide state was initialized (which incorrectly stores fraction as pixels)
+      if (entry.initialSize is PaneSizeFraction) {
+        // Flex pane - always use fractional calculation
         final fraction = getCurrentFraction(entry.id);
         totalFlexSum += fraction ?? entry.initialSize.size;
+      } else {
+        // Pixel pane - check for size override
+        final pixelSize = getCurrentPixelSize(entry.id);
+        if (pixelSize != null) {
+          totalFixedSize += pixelSize;
+        } else {
+          totalFixedSize += (entry.initialSize as PaneSizePixel).pixels;
+        }
       }
     }
 

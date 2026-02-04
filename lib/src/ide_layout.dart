@@ -4,6 +4,8 @@ import 'package:panes/src/pane_controller.dart';
 import 'package:panes/src/pane_entry.dart';
 import 'package:panes/src/pane_size.dart';
 
+export 'package:panes/src/pane_entry.dart' show ResizeBehavior;
+
 /// Represents the different panes in an [IdeLayout].
 enum IdePane {
   /// The left sidebar pane.
@@ -51,6 +53,7 @@ class IdeController {
     bool leftAutoHide = true,
     PaneSize? leftAutoHideThreshold,
     bool leftVisible = true,
+    ResizeBehavior? leftResizeBehavior,
 
     // Right panel configuration
     PaneSize? rightSize,
@@ -59,6 +62,7 @@ class IdeController {
     bool rightAutoHide = true,
     PaneSize? rightAutoHideThreshold,
     bool rightVisible = false,
+    ResizeBehavior? rightResizeBehavior,
 
     // Bottom panel configuration
     PaneSize? bottomSize,
@@ -67,6 +71,7 @@ class IdeController {
     bool bottomAutoHide = true,
     PaneSize? bottomAutoHideThreshold,
     bool bottomVisible = false,
+    ResizeBehavior? bottomResizeBehavior,
   }) {
     // Horizontal: Left | Center | Right
     rootController = PaneController(
@@ -79,6 +84,7 @@ class IdeController {
           autoHide: leftAutoHide,
           autoHideThreshold: leftAutoHideThreshold ?? PaneSize.fraction(0.5),
           visible: leftVisible,
+          resizeBehavior: leftResizeBehavior,
         ),
         PaneEntry(
           id: IdePane.centerContainer.id,
@@ -92,6 +98,7 @@ class IdeController {
           autoHide: rightAutoHide,
           autoHideThreshold: rightAutoHideThreshold ?? PaneSize.fraction(0.5),
           visible: rightVisible,
+          resizeBehavior: rightResizeBehavior,
         ),
       ],
     );
@@ -111,6 +118,7 @@ class IdeController {
           autoHide: bottomAutoHide,
           autoHideThreshold: bottomAutoHideThreshold ?? PaneSize.fraction(0.5),
           visible: bottomVisible,
+          resizeBehavior: bottomResizeBehavior,
         ),
       ],
     );
