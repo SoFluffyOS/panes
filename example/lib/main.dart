@@ -66,6 +66,7 @@ import 'package:flutter/material.dart';
 import 'package:panes/panes.dart';
 
 import 'cascade_demo.dart';
+import 'zero_space_resizer_demo.dart';
 
 void main() {
   runApp(const MyApp());
@@ -379,6 +380,13 @@ class _IdeExampleState extends State<IdeExample> {
             () => Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const CascadeDemo())),
+          ),
+          _titleBarAction(
+            Icons.compress,
+            'Zero-Space Resizer Demo',
+            () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ZeroSpaceResizerDemo()),
+            ),
           ),
           const SizedBox(width: 8),
           // Toggle buttons for panels (right side)
