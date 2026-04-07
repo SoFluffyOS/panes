@@ -155,7 +155,7 @@ class _CascadeDemoState extends State<CascadeDemo> {
               child: MultiPane(
                 controller: _verticalController,
                 direction: Axis.vertical,
-                paneBuilder: (context, id) => _buildVerticalPane(id),
+                paneBuilder: (context, id, progress) => _buildVerticalPane(id),
               ),
             ),
           ),
@@ -171,7 +171,7 @@ class _CascadeDemoState extends State<CascadeDemo> {
       'main' => MultiPane(
         controller: _horizontalController,
         direction: Axis.horizontal,
-        paneBuilder: (context, id) => _buildHorizontalPane(id),
+        paneBuilder: (context, id, progress) => _buildHorizontalPane(id),
       ),
       'terminal' => _buildTerminalPanel(),
       _ => const SizedBox(),

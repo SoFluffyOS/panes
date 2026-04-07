@@ -177,6 +177,10 @@ typedef IdeSizeChangedCallback = void Function(
   double size,
 );
 
+/// Builder for an IDE pane, exposing its animation progress (0.0 to 1.0).
+typedef IdePaneBuilder = Widget Function(
+    BuildContext context, double animationProgress);
+
 /// A pre-configured layout widget that mimics a standard IDE.
 ///
 /// It provides slots for [leftPanelBuilder], [rightPanelBuilder], [bottomPanelBuilder],
@@ -186,16 +190,16 @@ class IdeLayout extends StatefulWidget {
   final IdeController controller;
 
   /// Builder for the left sidebar panel.
-  final WidgetBuilder? leftPanelBuilder;
+  final IdePaneBuilder? leftPanelBuilder;
 
   /// Builder for the right sidebar panel.
-  final WidgetBuilder? rightPanelBuilder;
+  final IdePaneBuilder? rightPanelBuilder;
 
   /// Builder for the bottom panel.
-  final WidgetBuilder? bottomPanelBuilder;
+  final IdePaneBuilder? bottomPanelBuilder;
 
   /// Builder for the main center/editor area.
-  final WidgetBuilder? centerBuilder;
+  final IdePaneBuilder? centerBuilder;
 
   /// Duration for panel resize/toggle animations.
   final Duration animationDuration;
@@ -375,14 +379,15 @@ class _IdeLayoutState extends State<IdeLayout> {
       direction: Axis.horizontal,
       controller: widget.controller.rootController,
       animationDuration: widget.animationDuration,
-      paneBuilder: (context, id) {
+      paneBuilder: (context, id, progress) {
         if (id == IdePane.left.id) {
-          return widget.leftPanelBuilder?.call(context) ??
+          return widget.leftPanelBuilder?.call(context, progress) ??
               const SizedBox.shrink();
         }
 
         if (id == IdePane.right.id) {
-          return widget.rightPanelBuilder?.call(context) ?? const SizedBox();
+          return widget.rightPanelBuilder?.call(context, progress) ??
+              const SizedBox();
         }
 
         if (id == IdePane.centerContainer.id) {
@@ -390,13 +395,14 @@ class _IdeLayoutState extends State<IdeLayout> {
             direction: Axis.vertical,
             controller: widget.controller.centerController,
             animationDuration: widget.animationDuration,
-            paneBuilder: (context, innerId) {
+            paneBuilder: (context, innerId, innerProgress) {
               if (innerId == IdePane.center.id) {
-                return widget.centerBuilder?.call(context) ??
+                return widget.centerBuilder?.call(context, innerProgress) ??
                     const SizedBox.shrink();
               }
               if (innerId == IdePane.bottom.id) {
-                return widget.bottomPanelBuilder?.call(context) ??
+                return widget.bottomPanelBuilder
+                        ?.call(context, innerProgress) ??
                     const SizedBox();
               }
               return const SizedBox();
