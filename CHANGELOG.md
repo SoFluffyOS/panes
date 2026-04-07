@@ -1,3 +1,11 @@
+## 1.2.0
+
+- ✨ Implement zero-space resizer layout handling by @simonpham
+
+- ✨ Add cascade resize support by @khoadng
+
+- 💥 BREAKING: Add animationProgress to PaneBuilder & IdePaneBuilder by @simonpham
+
 ## 1.1.1
 
 - 🐛 Fix various resize and auto hide issues (#1) – thanks to @khoadng
