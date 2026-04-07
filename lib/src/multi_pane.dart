@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:panes/src/pane_controller.dart';
 import 'package:panes/src/pane_size.dart';
 import 'package:panes/src/pane_theme.dart';
@@ -95,9 +96,10 @@ class _MultiPaneState extends State<MultiPane> {
 
         final children = <Widget>[];
 
-        // Get resizer thickness from theme
+        // Get resizer thicknesses from theme
         final theme = PaneTheme.of(context);
-        final resizerSize = theme.resizerHitTestThickness;
+        final resizerHitTestSize = theme.resizerHitTestThickness;
+        final resizerLayoutSize = theme.resizerThickness;
 
         // Use controller's isResizing state
         final isResizing = widget.controller.isResizing;
@@ -182,43 +184,45 @@ class _MultiPaneState extends State<MultiPane> {
                 (isVisible && nextVisible) || isResizing || edgeDragReveal;
 
             children.add(
-              AnimatedContainer(
+              TweenAnimationBuilder<double>(
                 duration: isResizing ? Duration.zero : widget.animationDuration,
                 curve: widget.animationCurve,
-                width: widget.direction == Axis.horizontal
-                    ? (resizerVisible ? resizerSize : 0)
-                    : null,
-                height: widget.direction == Axis.vertical
-                    ? (resizerVisible ? resizerSize : 0)
-                    : null,
-                child: OverflowBox(
-                  maxWidth:
-                      widget.direction == Axis.horizontal ? resizerSize : null,
-                  maxHeight:
-                      widget.direction == Axis.vertical ? resizerSize : null,
-                  child: Resizer(
+                tween:
+                    Tween<double>(end: resizerVisible ? resizerLayoutSize : 0),
+                builder: (context, currentLayoutSize, child) {
+                  return ResizerWrapper(
                     direction: widget.direction,
-                    onResize: (delta) {
-                      _handleResize(entry.id, nextEntry.id, delta, resizerSize);
-                    },
-                    onResizeStart: () {
-                      widget.controller.beginResize(
-                        entry.id,
-                        adjacentPaneId: nextEntry.id,
-                      );
-                    },
-                    onResizeEnd: () {
-                      widget.controller.endResize(
-                        entry.id,
-                        adjacentPaneId: nextEntry.id,
-                      );
-                    },
-                    onDoubleTap: () {
-                      widget.controller.resetSize(entry.id);
-                      widget.controller.resetSize(nextEntry.id);
-                    },
-                  ),
-                ),
+                    layoutSize: currentLayoutSize,
+                    hitTestSize: resizerHitTestSize,
+                    child: Resizer(
+                      direction: widget.direction,
+                      onResize: (delta) {
+                        _handleResize(
+                          entry.id,
+                          nextEntry.id,
+                          delta,
+                          resizerLayoutSize, // Pass target size for calculating space
+                        );
+                      },
+                      onResizeStart: () {
+                        widget.controller.beginResize(
+                          entry.id,
+                          adjacentPaneId: nextEntry.id,
+                        );
+                      },
+                      onResizeEnd: () {
+                        widget.controller.endResize(
+                          entry.id,
+                          adjacentPaneId: nextEntry.id,
+                        );
+                      },
+                      onDoubleTap: () {
+                        widget.controller.resetSize(entry.id);
+                        widget.controller.resetSize(nextEntry.id);
+                      },
+                    ),
+                  );
+                },
               ),
             );
           }
@@ -237,7 +241,7 @@ class _MultiPaneState extends State<MultiPane> {
     String paneId,
     String adjacentPaneId,
     double delta,
-    double resizerSize,
+    double resizerLayoutSize,
   ) {
     final containerSize = widget.direction == Axis.horizontal
         ? _containerSize.width
@@ -247,8 +251,150 @@ class _MultiPaneState extends State<MultiPane> {
       paneId: paneId,
       delta: delta,
       containerSize: containerSize,
-      resizerThickness: resizerSize,
+      resizerThickness: resizerLayoutSize,
       adjacentPaneId: adjacentPaneId,
     );
+  }
+}
+
+/// A wrapper around a child that sizes itself to `layoutSize` in the layout axis
+/// but allows the child to layout at `hitTestSize` and properly redirects
+/// hit tests beyond the `layoutSize` bounds.
+class ResizerWrapper extends SingleChildRenderObjectWidget {
+  final Axis direction;
+  final double layoutSize;
+  final double hitTestSize;
+
+  const ResizerWrapper({
+    super.key,
+    required this.direction,
+    required this.layoutSize,
+    required this.hitTestSize,
+    required super.child,
+  });
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderResizerWrapper(
+        direction: direction,
+        layoutSize: layoutSize,
+        hitTestSize: hitTestSize,
+      );
+
+  @override
+  void updateRenderObject(
+      BuildContext context, _RenderResizerWrapper renderObject) {
+    renderObject
+      ..direction = direction
+      ..layoutSize = layoutSize
+      ..hitTestSize = hitTestSize;
+  }
+}
+
+class _RenderResizerWrapper extends RenderProxyBox {
+  _RenderResizerWrapper({
+    required Axis direction,
+    required double layoutSize,
+    required double hitTestSize,
+  })  : _direction = direction,
+        _layoutSize = layoutSize,
+        _hitTestSize = hitTestSize;
+
+  Axis _direction;
+  Axis get direction => _direction;
+  set direction(Axis value) {
+    if (_direction == value) return;
+    _direction = value;
+    markNeedsLayout();
+  }
+
+  double _layoutSize;
+  double get layoutSize => _layoutSize;
+  set layoutSize(double value) {
+    if (_layoutSize == value) return;
+    _layoutSize = value;
+    markNeedsLayout();
+  }
+
+  double _hitTestSize;
+  double get hitTestSize => _hitTestSize;
+  set hitTestSize(double value) {
+    if (_hitTestSize == value) return;
+    _hitTestSize = value;
+    // We don't necessarily need layout, but a repaint or hit test update.
+  }
+
+  @override
+  void performLayout() {
+    if (child != null) {
+      final childConstraints = direction == Axis.horizontal
+          ? constraints.copyWith(minWidth: 0, maxWidth: hitTestSize)
+          : constraints.copyWith(minHeight: 0, maxHeight: hitTestSize);
+      child!.layout(childConstraints, parentUsesSize: true);
+
+      size = direction == Axis.horizontal
+          ? Size(layoutSize, constraints.maxHeight)
+          : Size(constraints.maxWidth, layoutSize);
+    } else {
+      size = direction == Axis.horizontal
+          ? Size(layoutSize, constraints.maxHeight)
+          : Size(constraints.maxWidth, layoutSize);
+    }
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (child != null) {
+      final dx = direction == Axis.horizontal
+          ? (layoutSize - child!.size.width) / 2
+          : 0.0;
+      final dy = direction == Axis.vertical
+          ? (layoutSize - child!.size.height) / 2
+          : 0.0;
+
+      context.paintChild(child!, offset + Offset(dx, dy));
+    }
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    final hitTestRect = direction == Axis.horizontal
+        ? Rect.fromLTWH(
+            (layoutSize - hitTestSize) / 2, 0, hitTestSize, size.height)
+        : Rect.fromLTWH(
+            0, (layoutSize - hitTestSize) / 2, size.width, hitTestSize);
+
+    if (hitTestRect.contains(position)) {
+      if (hitTestChildren(result, position: position) ||
+          hitTestSelf(position)) {
+        result.add(BoxHitTestEntry(this, position));
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    if (child != null) {
+      final dx = direction == Axis.horizontal
+          ? (layoutSize - child!.size.width) / 2
+          : 0.0;
+      final dy = direction == Axis.vertical
+          ? (layoutSize - child!.size.height) / 2
+          : 0.0;
+
+      final childPosition = position - Offset(dx, dy);
+
+      final isHit = result.addWithPaintOffset(
+        offset: Offset(dx, dy),
+        position: position,
+        hitTest: (BoxHitTestResult result, Offset transformed) {
+          return child!.hitTest(result, position: childPosition);
+        },
+      );
+      return isHit;
+    }
+    return false;
   }
 }
