@@ -1,6 +1,25 @@
 import 'package:flutter/foundation.dart';
 import 'package:panes/src/pane_size.dart';
 
+/// Controls how a pane participates in cascade resize operations.
+///
+/// When a resize operation would push a pane past its constraints,
+/// the remaining delta can cascade to neighboring panes based on their behavior.
+enum ResizeBehavior {
+  /// Absorb resize delta first, before other panes.
+  ///
+  /// This is the default for fractional panes.
+  eager,
+
+  /// Absorb resize delta last, after eager panes are exhausted.
+  reluctant,
+
+  /// Never absorb cascade delta; skip entirely.
+  ///
+  /// This is the default for pixel-sized panes.
+  fixed,
+}
+
 /// Configuration for a single pane within a [PaneController].
 @immutable
 class PaneEntry {
@@ -28,6 +47,15 @@ class PaneEntry {
   /// (or 20.0 pixels if minSize is also not set).
   final PaneSize? autoHideThreshold;
 
+  /// How this pane participates in cascade resize operations.
+  ///
+  /// When null, defaults based on [initialSize] type:
+  /// - Pixel panes default to [ResizeBehavior.fixed]
+  /// - Fractional panes default to [ResizeBehavior.eager]
+  ///
+  /// Set explicitly to override the default behavior.
+  final ResizeBehavior? resizeBehavior;
+
   /// Creates a [PaneEntry].
   const PaneEntry({
     required this.id,
@@ -37,7 +65,20 @@ class PaneEntry {
     this.maxSize,
     this.autoHide = false,
     this.autoHideThreshold,
+    this.resizeBehavior,
   });
+
+  /// Returns the effective resize behavior for this pane.
+  ///
+  /// If [resizeBehavior] is explicitly set, returns that value.
+  /// Otherwise, returns [ResizeBehavior.fixed] for pixel panes
+  /// and [ResizeBehavior.eager] for fractional panes.
+  ResizeBehavior get effectiveResizeBehavior {
+    if (resizeBehavior != null) return resizeBehavior!;
+    return initialSize is PaneSizePixel
+        ? ResizeBehavior.fixed
+        : ResizeBehavior.eager;
+  }
 
   /// Creates a copy of this entry with the given fields replaced with new values.
   PaneEntry copyWith({
@@ -48,6 +89,7 @@ class PaneEntry {
     PaneSize? maxSize,
     bool? autoHide,
     PaneSize? autoHideThreshold,
+    ResizeBehavior? resizeBehavior,
   }) {
     return PaneEntry(
       id: id ?? this.id,
@@ -57,6 +99,7 @@ class PaneEntry {
       maxSize: maxSize ?? this.maxSize,
       autoHide: autoHide ?? this.autoHide,
       autoHideThreshold: autoHideThreshold ?? this.autoHideThreshold,
+      resizeBehavior: resizeBehavior ?? this.resizeBehavior,
     );
   }
 }

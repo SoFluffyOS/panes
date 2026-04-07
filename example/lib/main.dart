@@ -65,6 +65,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:panes/panes.dart';
 
+import 'cascade_demo.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -162,9 +164,19 @@ class _IdeExampleState extends State<IdeExample> {
   void initState() {
     super.initState();
     _ideController = IdeController(
+      leftSize: PaneSize.pixel(250),
+      leftMinSize: PaneSize.pixel(150),
       leftMaxSize: PaneSize.pixel(500),
+      leftResizeBehavior: ResizeBehavior.eager,
+      rightSize: PaneSize.pixel(300),
+      rightMinSize: PaneSize.pixel(150),
       rightMaxSize: PaneSize.pixel(500),
-      bottomMaxSize: PaneSize.pixel(480),
+      rightResizeBehavior: ResizeBehavior.eager,
+      bottomSize: PaneSize.fraction(0.5),
+      bottomMinSize: PaneSize.pixel(50),
+      bottomAutoHide: true,
+      bottomAutoHideThreshold: PaneSize.fraction(0.5),
+      bottomResizeBehavior: ResizeBehavior.eager,
     );
     // Show panels by default
     _ideController.rootController.show(IdePane.right.id);
@@ -348,6 +360,15 @@ class _IdeExampleState extends State<IdeExample> {
               ),
             ),
           ),
+          // Cascade demo button
+          _titleBarAction(
+            Icons.swap_horiz,
+            'Cascade Resize Demo',
+            () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const CascadeDemo())),
+          ),
+          const SizedBox(width: 8),
           // Toggle buttons for panels (right side)
           _titleBarAction(
             Icons.terminal,
