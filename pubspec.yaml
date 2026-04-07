@@ -1,6 +1,6 @@
 name: panes
 description: A powerful Flutter package for creating complex, resizable, multi-pane layouts. Ideal for building IDE-like interfaces, advanced dashboards, and desktop applications.
-version: 1.1.1
+version: 1.2.0
 homepage: https://github.com/SoFluffyOS/panes
 
 environment:
