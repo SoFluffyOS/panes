@@ -272,10 +272,22 @@ class _IdeExampleState extends State<IdeExample> {
                               // Rebuild to update size indicators in title bar
                             });
                           },
-                          leftPanelBuilder: (context) => _buildLeftPanel(),
-                          rightPanelBuilder: (context) => _buildRightPanel(),
-                          bottomPanelBuilder: (context) => _buildBottomPanel(),
-                          centerBuilder: (context) => _buildCenterPanel(),
+                          leftPanelBuilder: (context, progress) => Opacity(
+                            opacity: progress.clamp(0.0, 1.0),
+                            child: _buildLeftPanel(),
+                          ),
+                          rightPanelBuilder: (context, progress) => Opacity(
+                            opacity: progress.clamp(0.0, 1.0),
+                            child: _buildRightPanel(),
+                          ),
+                          bottomPanelBuilder: (context, progress) => Opacity(
+                            opacity: progress.clamp(0.0, 1.0),
+                            child: _buildBottomPanel(),
+                          ),
+                          centerBuilder: (context, progress) => Opacity(
+                            opacity: progress.clamp(0.0, 1.0),
+                            child: _buildCenterPanel(),
+                          ),
                         ),
                       ),
                     ],

@@ -20,7 +20,7 @@ void main() {
             body: MultiPane(
               direction: Axis.horizontal,
               controller: controller,
-              paneBuilder: (context, id) => Container(
+              paneBuilder: (context, id, progress) => Container(
                 key: Key('pane_$id'),
                 color: id == 'a' ? Colors.red : Colors.blue,
               ),
@@ -47,7 +47,7 @@ void main() {
             body: MultiPane(
               direction: Axis.horizontal,
               controller: controller,
-              paneBuilder: (context, id) => Container(
+              paneBuilder: (context, id, progress) => Container(
                 key: Key('pane_$id'),
               ),
             ),
@@ -79,7 +79,7 @@ void main() {
             body: MultiPane(
               direction: Axis.horizontal,
               controller: controller,
-              paneBuilder: (context, id) => Container(
+              paneBuilder: (context, id, progress) => Container(
                 key: Key('pane_$id'),
               ),
             ),
@@ -131,7 +131,7 @@ void main() {
               child: MultiPane(
                 direction: Axis.horizontal,
                 controller: controller,
-                paneBuilder: (context, id) => Container(
+                paneBuilder: (context, id, progress) => Container(
                   key: Key('pane_$id'),
                   color: Colors.grey,
                 ),
@@ -163,7 +163,8 @@ void main() {
               child: MultiPane(
                 direction: Axis.horizontal,
                 controller: controller,
-                paneBuilder: (context, id) => Container(key: Key('pane_$id')),
+                paneBuilder: (context, id, progress) =>
+                    Container(key: Key('pane_$id')),
               ),
             ),
           ),
@@ -306,13 +307,13 @@ void main() {
               height: 800,
               child: IdeLayout(
                 controller: controller,
-                leftPanelBuilder: (context) =>
+                leftPanelBuilder: (context, progress) =>
                     Container(key: const Key('left'), color: Colors.red),
-                rightPanelBuilder: (context) =>
+                rightPanelBuilder: (context, progress) =>
                     Container(key: const Key('right'), color: Colors.green),
-                bottomPanelBuilder: (context) =>
+                bottomPanelBuilder: (context, progress) =>
                     Container(key: const Key('bottom'), color: Colors.blue),
-                centerBuilder: (context) =>
+                centerBuilder: (context, progress) =>
                     Container(key: const Key('center'), color: Colors.yellow),
               ),
             ),
@@ -339,9 +340,10 @@ void main() {
               height: 600,
               child: IdeLayout(
                 controller: controller,
-                leftPanelBuilder: (context) =>
+                leftPanelBuilder: (context, progress) =>
                     Container(key: const Key('left')),
-                centerBuilder: (context) => Container(key: const Key('center')),
+                centerBuilder: (context, progress) =>
+                    Container(key: const Key('center')),
               ),
             ),
           ),

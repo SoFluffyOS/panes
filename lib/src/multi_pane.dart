@@ -5,7 +5,11 @@ import 'package:panes/src/pane_theme.dart';
 import 'package:panes/src/resizer.dart';
 
 /// Builder function for creating the widget content of a pane.
-typedef PaneBuilder = Widget Function(BuildContext context, String paneId);
+typedef PaneBuilder = Widget Function(
+  BuildContext context,
+  String paneId,
+  double animationProgress,
+);
 
 /// A widget that displays multiple resizable panes in a row or column.
 ///
@@ -79,7 +83,7 @@ class _MultiPaneState extends State<MultiPane> {
 
         // Check for Maximized Pane
         if (widget.controller.maximizedPaneId case final maxId?) {
-          final childWidget = widget.paneBuilder(context, maxId);
+          final childWidget = widget.paneBuilder(context, maxId, 1.0);
           return SizedBox(
             width: _containerSize.width,
             height: _containerSize.height,
@@ -101,7 +105,6 @@ class _MultiPaneState extends State<MultiPane> {
         for (int i = 0; i < entries.length; i++) {
           final entry = entries[i];
           final isVisible = widget.controller.isVisible(entry.id);
-          final childWidget = widget.paneBuilder(context, entry.id);
 
           // Determine effective size (visual)
           double? pixelSize = widget.controller.getVisualPixelSize(entry.id);
@@ -119,24 +122,34 @@ class _MultiPaneState extends State<MultiPane> {
           }
 
           Widget wrappedChild = switch (effectiveSize) {
-            PaneSizePixel(:final pixels) => AnimatedContainer(
+            PaneSizePixel(:final pixels) => TweenAnimationBuilder<double>(
+                tween: Tween<double>(end: isVisible ? pixels : 0.0),
                 duration: isResizing ? Duration.zero : widget.animationDuration,
                 curve: widget.animationCurve,
-                width: widget.direction == Axis.horizontal
-                    ? (isVisible ? pixels : 0)
-                    : null,
-                height: widget.direction == Axis.vertical
-                    ? (isVisible ? pixels : 0)
-                    : null,
-                child: SingleChildScrollView(
-                  scrollDirection: widget.direction,
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: SizedBox(
-                    width: widget.direction == Axis.horizontal ? pixels : null,
-                    height: widget.direction == Axis.vertical ? pixels : null,
-                    child: childWidget,
-                  ),
-                ),
+                builder: (context, currentSize, child) {
+                  final progress = pixels > 0 ? (currentSize / pixels) : 0.0;
+                  final childWidget =
+                      widget.paneBuilder(context, entry.id, progress);
+
+                  return SizedBox(
+                    width: widget.direction == Axis.horizontal
+                        ? currentSize
+                        : null,
+                    height:
+                        widget.direction == Axis.vertical ? currentSize : null,
+                    child: SingleChildScrollView(
+                      scrollDirection: widget.direction,
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: SizedBox(
+                        width:
+                            widget.direction == Axis.horizontal ? pixels : null,
+                        height:
+                            widget.direction == Axis.vertical ? pixels : null,
+                        child: childWidget,
+                      ),
+                    ),
+                  );
+                },
               ),
             PaneSizeFraction(:final fraction) => isVisible
                 ? Expanded(
@@ -146,7 +159,7 @@ class _MultiPaneState extends State<MultiPane> {
                                     : fraction) *
                                 100)
                             .toInt(),
-                    child: childWidget,
+                    child: widget.paneBuilder(context, entry.id, 1.0),
                   )
                 : const SizedBox.shrink(),
           };
