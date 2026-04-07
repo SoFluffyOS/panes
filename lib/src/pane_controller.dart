@@ -64,8 +64,9 @@ class PaneController extends ChangeNotifier {
     _visibilityOverrides[id] = true;
 
     // Restore size from auto-hide state if available
-    if (_autoHideStates[id] case AutoHideHidden(:final restoreSize?) ||
-        AutoHidePendingReveal(:final restoreSize)) {
+    if (_autoHideStates[id]
+        case AutoHideHidden(:final restoreSize?) ||
+            AutoHidePendingReveal(:final restoreSize)) {
       _pixelSizes[id] = restoreSize;
       _autoHideStates[id] = AutoHideVisible(pixelSize: restoreSize);
     }
@@ -194,8 +195,7 @@ class PaneController extends ChangeNotifier {
         // When resizing a fractional pane adjacent to a pixel pane,
         // we need to respect the fractional pane's min/max constraints.
         // The fractional pane grows/shrinks opposite to the pixel pane.
-        final fractionalCurrentSize =
-            _getPixelSizeForCalculation(paneId) ??
+        final fractionalCurrentSize = _getPixelSizeForCalculation(paneId) ??
             ResizeCalculator.toPixels(entry.initialSize, context);
         final fractionalNewSize = fractionalCurrentSize + delta;
 
@@ -498,16 +498,16 @@ class PaneController extends ChangeNotifier {
     // Only cascade to pixel panes - fractional panes handle redistribution
     // automatically through the flex layout system
     final pixelTargets = targets
-        .where((e) =>
-            _pixelSizes[e.id] != null || e.initialSize is PaneSizePixel)
+        .where(
+            (e) => _pixelSizes[e.id] != null || e.initialSize is PaneSizePixel)
         .toList();
 
     // Try to absorb with pixel panes (one at a time)
     for (final entry in pixelTargets) {
       if (remainingDelta <= 0) break;
 
-      final currentSize = _getPixelSizeForCalculation(entry.id) ??
-          entry.initialSize.size;
+      final currentSize =
+          _getPixelSizeForCalculation(entry.id) ?? entry.initialSize.size;
 
       final (absorbed, remaining) = ResizeCalculator.calculateAbsorption(
         currentSize: currentSize,
@@ -517,19 +517,22 @@ class PaneController extends ChangeNotifier {
       );
 
       if (absorbed.abs() > 0) {
-        _pixelSizes[entry.id] = currentSize + absorbed;
+        // Clear any previous tracking state because the pane is being pushed
+        // by its neighbor, meaning its virtual dimensions are no longer valid.
+        _maxOvershootPositions.remove(entry.id);
+        _minUndershootPositions.remove(entry.id);
+
+        // Properly resize the pane, which correctly triggers auto-hide if needed
+        _resizePixelPane(
+          entry.id,
+          entry,
+          absorbed,
+          context,
+        );
       }
 
       remainingDelta = remaining.abs();
     }
-
-    // NOTE: We do NOT cascade to fractional panes.
-    // The flex layout automatically redistributes space when flexSpace changes.
-    // Explicitly modifying _fractionalSizes during cascade would lock the
-    // fractions to specific values and break subsequent resize operations.
-    //
-    // Fractional panes naturally absorb overflow/underflow through the flex
-    // system without needing explicit cascade handling.
 
     // Return consumed delta (original minus remaining, with original sign)
     final consumed = delta.abs() - remainingDelta;
