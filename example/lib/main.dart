@@ -251,7 +251,8 @@ class _IdeExampleState extends State<IdeExample> {
                               // which pane ID is set in each controller
                               if (isMaximized) {
                                 final centerMaxId = _ideController
-                                    .centerController.maximizedPaneId;
+                                    .centerController
+                                    .maximizedPaneId;
                                 if (centerMaxId == IdePane.bottom.id) {
                                   _isTerminalMaximized = true;
                                   _isEditorMaximized = false;
@@ -363,9 +364,9 @@ class _IdeExampleState extends State<IdeExample> {
           _titleBarAction(
             Icons.swap_horiz,
             'Cascade Resize Demo',
-            () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const CascadeDemo()),
-            ),
+            () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const CascadeDemo())),
           ),
           const SizedBox(width: 8),
           // Toggle buttons for panels (right side)
@@ -1067,68 +1068,68 @@ class _IdeExampleState extends State<IdeExample> {
   }
 
   Widget _keyword(String text) => Text(
-        text,
-        style: const TextStyle(
-          color: IdeColors.keyword,
-          fontSize: 13,
-          fontFamily: 'JetBrains Mono',
-          height: 1.5,
-        ),
-      );
+    text,
+    style: const TextStyle(
+      color: IdeColors.keyword,
+      fontSize: 13,
+      fontFamily: 'JetBrains Mono',
+      height: 1.5,
+    ),
+  );
   Widget _string(String text) => Text(
-        text,
-        style: const TextStyle(
-          color: IdeColors.string,
-          fontSize: 13,
-          fontFamily: 'JetBrains Mono',
-          height: 1.5,
-        ),
-      );
+    text,
+    style: const TextStyle(
+      color: IdeColors.string,
+      fontSize: 13,
+      fontFamily: 'JetBrains Mono',
+      height: 1.5,
+    ),
+  );
   Widget _comment(String text) => Text(
-        text,
-        style: const TextStyle(
-          color: IdeColors.comment,
-          fontSize: 13,
-          fontFamily: 'JetBrains Mono',
-          height: 1.5,
-        ),
-      );
+    text,
+    style: const TextStyle(
+      color: IdeColors.comment,
+      fontSize: 13,
+      fontFamily: 'JetBrains Mono',
+      height: 1.5,
+    ),
+  );
   Widget _function(String text) => Text(
-        text,
-        style: const TextStyle(
-          color: IdeColors.function,
-          fontSize: 13,
-          fontFamily: 'JetBrains Mono',
-          height: 1.5,
-        ),
-      );
+    text,
+    style: const TextStyle(
+      color: IdeColors.function,
+      fontSize: 13,
+      fontFamily: 'JetBrains Mono',
+      height: 1.5,
+    ),
+  );
   Widget _type(String text) => Text(
-        text,
-        style: const TextStyle(
-          color: IdeColors.type,
-          fontSize: 13,
-          fontFamily: 'JetBrains Mono',
-          height: 1.5,
-        ),
-      );
+    text,
+    style: const TextStyle(
+      color: IdeColors.type,
+      fontSize: 13,
+      fontFamily: 'JetBrains Mono',
+      height: 1.5,
+    ),
+  );
   Widget _variable(String text) => Text(
-        text,
-        style: const TextStyle(
-          color: IdeColors.variable,
-          fontSize: 13,
-          fontFamily: 'JetBrains Mono',
-          height: 1.5,
-        ),
-      );
+    text,
+    style: const TextStyle(
+      color: IdeColors.variable,
+      fontSize: 13,
+      fontFamily: 'JetBrains Mono',
+      height: 1.5,
+    ),
+  );
   Widget _plain(String text) => Text(
-        text,
-        style: const TextStyle(
-          color: IdeColors.text,
-          fontSize: 13,
-          fontFamily: 'JetBrains Mono',
-          height: 1.5,
-        ),
-      );
+    text,
+    style: const TextStyle(
+      color: IdeColors.text,
+      fontSize: 13,
+      fontFamily: 'JetBrains Mono',
+      height: 1.5,
+    ),
+  );
 
   Widget _buildRightPanel() {
     // Fleet style: outline panel with rounded corners

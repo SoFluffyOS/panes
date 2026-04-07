@@ -169,10 +169,10 @@ class _CascadeDemoState extends State<CascadeDemo> {
   Widget _buildVerticalPane(String id) {
     return switch (id) {
       'main' => MultiPane(
-          controller: _horizontalController,
-          direction: Axis.horizontal,
-          paneBuilder: (context, id) => _buildHorizontalPane(id),
-        ),
+        controller: _horizontalController,
+        direction: Axis.horizontal,
+        paneBuilder: (context, id) => _buildHorizontalPane(id),
+      ),
       'terminal' => _buildTerminalPanel(),
       _ => const SizedBox(),
     };
@@ -285,16 +285,15 @@ class _CascadeDemoState extends State<CascadeDemo> {
     return ListenableBuilder(
       listenable: _verticalController,
       builder: (context, _) {
-        final entry = _verticalController.entries
-            .firstWhere((e) => e.id == 'terminal');
+        final entry = _verticalController.entries.firstWhere(
+          (e) => e.id == 'terminal',
+        );
         return Container(
           height: 24,
           color: const Color(0xFF252526),
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
-            children: [
-              Expanded(child: _sizeChip(entry, _verticalController)),
-            ],
+            children: [Expanded(child: _sizeChip(entry, _verticalController))],
           ),
         );
       },
@@ -302,7 +301,8 @@ class _CascadeDemoState extends State<CascadeDemo> {
   }
 
   Widget _sizeChip(PaneEntry entry, PaneController controller) {
-    final size = controller.getPixelSize(entry.id) ??
+    final size =
+        controller.getPixelSize(entry.id) ??
         controller.getFractionalSize(entry.id);
     final behavior = entry.effectiveResizeBehavior;
     final color = behavior == ResizeBehavior.fixed ? Colors.red : Colors.green;
@@ -310,10 +310,10 @@ class _CascadeDemoState extends State<CascadeDemo> {
     final sizeText = controller.getPixelSize(entry.id) != null
         ? '${size!.toInt()}px'
         : controller.getFractionalSize(entry.id) != null
-            ? 'flex: ${size!.toStringAsFixed(2)}'
-            : entry.initialSize is PaneSizePixel
-                ? '${entry.initialSize.size.toInt()}px'
-                : 'flex';
+        ? 'flex: ${size!.toStringAsFixed(2)}'
+        : entry.initialSize is PaneSizePixel
+        ? '${entry.initialSize.size.toInt()}px'
+        : 'flex';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
@@ -375,8 +375,9 @@ class _CascadeDemoState extends State<CascadeDemo> {
   }
 
   Widget _buildExplorerPanel() {
-    final entry =
-        _horizontalController.entries.firstWhere((e) => e.id == 'explorer');
+    final entry = _horizontalController.entries.firstWhere(
+      (e) => e.id == 'explorer',
+    );
     return _panelContainer(
       color: Colors.green,
       header: 'EXPLORER',
@@ -436,12 +437,12 @@ class _CascadeDemoState extends State<CascadeDemo> {
                         i == 1
                             ? 'import \'package:flutter/material.dart\';'
                             : i == 3
-                                ? 'void main() {'
-                                : i == 4
-                                    ? '  runApp(const MyApp());'
-                                    : i == 5
-                                        ? '}'
-                                        : '',
+                            ? 'void main() {'
+                            : i == 4
+                            ? '  runApp(const MyApp());'
+                            : i == 5
+                            ? '}'
+                            : '',
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 12,
@@ -459,8 +460,9 @@ class _CascadeDemoState extends State<CascadeDemo> {
   }
 
   Widget _buildOutlinePanel() {
-    final entry =
-        _horizontalController.entries.firstWhere((e) => e.id == 'outline');
+    final entry = _horizontalController.entries.firstWhere(
+      (e) => e.id == 'outline',
+    );
     return _panelContainer(
       color: Colors.red,
       header: 'OUTLINE (FIXED)',
@@ -481,10 +483,12 @@ class _CascadeDemoState extends State<CascadeDemo> {
   }
 
   Widget _buildTerminalPanel() {
-    final entry =
-        _verticalController.entries.firstWhere((e) => e.id == 'terminal');
-    final editorCount =
-        _horizontalEntries.where((e) => e.id.startsWith('editor')).length;
+    final entry = _verticalController.entries.firstWhere(
+      (e) => e.id == 'terminal',
+    );
+    final editorCount = _horizontalEntries
+        .where((e) => e.id.startsWith('editor'))
+        .length;
 
     return _panelContainer(
       color: Colors.green,
@@ -602,7 +606,9 @@ class _CascadeDemoState extends State<CascadeDemo> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(3),
+              ),
             ),
             child: Row(
               children: [
@@ -617,7 +623,10 @@ class _CascadeDemoState extends State<CascadeDemo> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(2),
