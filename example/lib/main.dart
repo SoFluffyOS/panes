@@ -161,9 +161,25 @@ class _IdeExampleState extends State<IdeExample> {
   bool _isEditorMaximized = false;
   bool _isTerminalMaximized = false;
 
+  // Dynamic terminal panes state
+  late final PaneController _terminalController;
+  int _terminalCounter = 1;
+
+  // Dynamic editor panes state
+  late final PaneController _editorController;
+  int _editorCounter = 1;
+
   @override
   void initState() {
     super.initState();
+    _terminalController = PaneController(
+      entries: [
+        PaneEntry(id: 'terminal_1', initialSize: PaneSize.fraction(1.0)),
+      ],
+    );
+    _editorController = PaneController(
+      entries: [PaneEntry(id: 'editor_1', initialSize: PaneSize.fraction(1.0))],
+    );
     _ideController = IdeController(
       leftSize: PaneSize.pixel(250),
       leftMinSize: PaneSize.pixel(150),
@@ -187,7 +203,46 @@ class _IdeExampleState extends State<IdeExample> {
   @override
   void dispose() {
     _ideController.dispose();
+    _terminalController.dispose();
+    _editorController.dispose();
     super.dispose();
+  }
+
+  void _splitEditor() {
+    setState(() {
+      _editorCounter++;
+      final id = 'editor_$_editorCounter';
+      _editorController.addPane(
+        PaneEntry(id: id, initialSize: PaneSize.fraction(1.0)),
+      );
+    });
+  }
+
+  void _removeEditor(String id) {
+    setState(() {
+      if (_editorController.entries.length > 1) {
+        _editorController.removePane(id);
+      }
+    });
+  }
+
+  void _splitTerminal() {
+    setState(() {
+      _terminalCounter++;
+      final id = 'terminal_$_terminalCounter';
+      _terminalController.addPane(
+        PaneEntry(id: id, initialSize: PaneSize.fraction(1.0)),
+      );
+    });
+  }
+
+  void _removeTerminal(String id) {
+    setState(() {
+      // Don't remove the last terminal
+      if (_terminalController.entries.length > 1) {
+        _terminalController.removePane(id);
+      }
+    });
   }
 
   void _onPaneStateChanged(IdePane pane, bool isVisible) {
@@ -642,11 +697,11 @@ class _IdeExampleState extends State<IdeExample> {
     }
   }
 
-  Widget _panelAction(IconData icon, String tooltip) {
+  Widget _panelAction(IconData icon, String tooltip, {VoidCallback? onTap}) {
     return Tooltip(
       message: tooltip,
       child: InkWell(
-        onTap: () {},
+        onTap: onTap ?? () {},
         borderRadius: BorderRadius.circular(4),
         child: Padding(
           padding: const EdgeInsets.all(4),
@@ -776,6 +831,16 @@ class _IdeExampleState extends State<IdeExample> {
   }
 
   Widget _buildCenterPanel() {
+    return MultiPane(
+      direction: Axis.horizontal,
+      controller: _editorController,
+      paneBuilder: (context, id, progress) {
+        return _editorInstance(id);
+      },
+    );
+  }
+
+  Widget _editorInstance(String id) {
     // Fleet style: editor with rounded corners
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
@@ -788,7 +853,7 @@ class _IdeExampleState extends State<IdeExample> {
         child: Column(
           children: [
             // Editor tabs
-            _buildEditorTabs(),
+            _buildEditorTabs(id),
             // Code editor (no breadcrumb - Fleet is minimal)
             Expanded(child: _buildCodeEditor()),
           ],
@@ -797,7 +862,7 @@ class _IdeExampleState extends State<IdeExample> {
     );
   }
 
-  Widget _buildEditorTabs() {
+  Widget _buildEditorTabs(String id) {
     final tabs = ['main.dart', 'pane_theme.dart'];
 
     return Container(
@@ -812,6 +877,8 @@ class _IdeExampleState extends State<IdeExample> {
         children: [
           for (int i = 0; i < tabs.length; i++) _editorTab(tabs[i], i),
           const Spacer(),
+          // Split editor button
+          _panelAction(Icons.splitscreen, 'Split Editor', onTap: _splitEditor),
           // Maximize editor button
           Tooltip(
             message: _isEditorMaximized ? 'Restore' : 'Maximize',
@@ -835,6 +902,13 @@ class _IdeExampleState extends State<IdeExample> {
               ),
             ),
           ),
+          // Close split button
+          if (_editorController.entries.length > 1)
+            _panelAction(
+              Icons.close,
+              'Close Split',
+              onTap: () => _removeEditor(id),
+            ),
           const SizedBox(width: 8),
         ],
       ),
@@ -1278,7 +1352,7 @@ class _IdeExampleState extends State<IdeExample> {
           ],
           actions: [
             _panelAction(Icons.add, 'New Terminal'),
-            _panelAction(Icons.splitscreen, 'Split'),
+            _panelAction(Icons.splitscreen, 'Split', onTap: _splitTerminal),
             const SizedBox(width: 4),
             // Demonstrate maximize/restore for bottom panel (full maximize)
             Tooltip(
@@ -1327,42 +1401,90 @@ class _IdeExampleState extends State<IdeExample> {
   }
 
   Widget _buildTerminalContent() {
+    return MultiPane(
+      direction: Axis.horizontal,
+      controller: _terminalController,
+      paneBuilder: (context, id, progress) {
+        return _terminalInstance(id);
+      },
+    );
+  }
+
+  Widget _terminalInstance(String id) {
     return Container(
-      color: IdeColors.surface,
-      padding: const EdgeInsets.all(12),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _terminalLine(
-              'simon@macbook',
-              'panes %',
-              'flutter run -d macos',
-              isPrompt: true,
-            ),
-            const SizedBox(height: 4),
-            _terminalOutput(
-              'Launching lib/main.dart on macOS in debug mode...',
-              IdeColors.text,
-            ),
-            _terminalOutput('Building macOS application...', IdeColors.text),
-            const SizedBox(height: 4),
-            _terminalOutput(
-              '✓ Built build/macos/Build/Products/Debug/example.app',
-              IdeColors.string,
-            ),
-            const SizedBox(height: 8),
-            _terminalOutput('Syncing files to device macOS...', IdeColors.text),
-            _terminalOutput('  4,521ms (!) ', IdeColors.keyword),
-            const SizedBox(height: 8),
-            _terminalOutput('Flutter run key commands.', IdeColors.textMuted),
-            _terminalOutput('r  Hot reload. 🔥🔥🔥', IdeColors.textMuted),
-            _terminalOutput('R  Hot restart.', IdeColors.textMuted),
-            _terminalOutput('q  Quit.', IdeColors.textMuted),
-            const SizedBox(height: 16),
-            _terminalLine('simon@macbook', 'panes %', '', isPrompt: true),
-          ],
+      decoration: const BoxDecoration(
+        color: IdeColors.surface,
+        border: Border(
+          right: BorderSide(color: IdeColors.panelBorder, width: 1),
         ),
+      ),
+      child: Column(
+        children: [
+          // Sub-header for split terminal
+          Container(
+            height: 24,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            color: IdeColors.panel,
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.terminal,
+                  size: 12,
+                  color: IdeColors.textMuted,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  id.replaceAll('_', ' '),
+                  style: const TextStyle(
+                    color: IdeColors.textMuted,
+                    fontSize: 10,
+                    fontFamily: 'JetBrains Mono',
+                  ),
+                ),
+                const Spacer(),
+                if (_terminalController.entries.length > 1)
+                  InkWell(
+                    onTap: () => _removeTerminal(id),
+                    child: const Icon(
+                      Icons.close,
+                      size: 12,
+                      color: IdeColors.textMuted,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _terminalLine(
+                      'simon@macbook',
+                      'panes %',
+                      'flutter run',
+                      isPrompt: true,
+                    ),
+                    const SizedBox(height: 4),
+                    _terminalOutput(
+                      'Terminal instance $id active.',
+                      IdeColors.text,
+                    ),
+                    const SizedBox(height: 8),
+                    _terminalLine(
+                      'simon@macbook',
+                      'panes %',
+                      '',
+                      isPrompt: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -26,13 +26,96 @@ class PaneController extends ChangeNotifier {
   bool _isResizing = false;
 
   /// Creates a [PaneController] with the given list of [entries].
-  PaneController({required List<PaneEntry> entries}) : _entries = entries;
+  PaneController({required List<PaneEntry> entries})
+      : _entries = List.from(entries);
 
   /// The list of pane entries managed by this controller.
   List<PaneEntry> get entries => List.unmodifiable(_entries);
 
   /// Whether a resize drag is currently in progress.
   bool get isResizing => _isResizing;
+
+  // ---------------------------------------------------------------------------
+  // Dynamic Pane Management
+  // ---------------------------------------------------------------------------
+
+  /// Adds a new pane to the controller.
+  ///
+  /// Throws an [ArgumentError] if a pane with the same ID already exists.
+  /// If [index] is provided, the pane is inserted at that position.
+  /// Otherwise, it is added to the end.
+  void addPane(PaneEntry entry, {int? index}) {
+    if (_entries.any((e) => e.id == entry.id)) {
+      throw ArgumentError('Pane with ID ${entry.id} already exists');
+    }
+
+    if (index != null) {
+      final safeIndex = index.clamp(0, _entries.length);
+      _entries.insert(safeIndex, entry);
+    } else {
+      _entries.add(entry);
+    }
+
+    notifyListeners();
+  }
+
+  /// Adds multiple panes to the controller in a single operation.
+  void addPanes(Iterable<PaneEntry> entries) {
+    for (final entry in entries) {
+      if (_entries.any((e) => e.id == entry.id)) {
+        throw ArgumentError('Pane with ID ${entry.id} already exists');
+      }
+      _entries.add(entry);
+    }
+    notifyListeners();
+  }
+
+  /// Removes the pane with the given [id] and cleans up its state.
+  void removePane(String id) {
+    final index = _entries.indexWhere((e) => e.id == id);
+    if (index == -1) return;
+
+    _entries.removeAt(index);
+    _cleanupState(id);
+
+    if (_maximizedPaneId == id) {
+      _maximizedPaneId = null;
+    }
+
+    notifyListeners();
+  }
+
+  /// Updates an existing pane's configuration.
+  ///
+  /// The pane is identified by [entry.id].
+  void updatePane(PaneEntry entry) {
+    final index = _entries.indexWhere((e) => e.id == entry.id);
+    if (index == -1) {
+      throw ArgumentError('Pane with ID ${entry.id} not found');
+    }
+
+    final oldEntry = _entries[index];
+    _entries[index] = entry;
+
+    // If the size type changed (pixel vs fraction), clear overrides to
+    // ensure the new initialSize type takes effect.
+    if (oldEntry.initialSize.runtimeType != entry.initialSize.runtimeType) {
+      _pixelSizes.remove(entry.id);
+      _fractionalSizes.remove(entry.id);
+      _autoHideStates.remove(entry.id);
+    }
+
+    notifyListeners();
+  }
+
+  void _cleanupState(String id) {
+    _pixelSizes.remove(id);
+    _fractionalSizes.remove(id);
+    _visibilityOverrides.remove(id);
+    _autoHideStates.remove(id);
+    _maxOvershootPositions.remove(id);
+    _minUndershootPositions.remove(id);
+  }
 
   // ---------------------------------------------------------------------------
   // Visibility
@@ -102,8 +185,11 @@ class PaneController extends ChangeNotifier {
   }
 
   void _initializeResizeState(String id) {
-    final entry = _getEntry(id);
-    if (!entry.autoHide) return;
+    final entry = _entries.cast<PaneEntry?>().firstWhere(
+          (e) => e?.id == id,
+          orElse: () => null,
+        );
+    if (entry == null || !entry.autoHide) return;
 
     final currentSize = _pixelSizes[id] ?? entry.initialSize.size;
     _autoHideStates[id] = AutoHideBehavior.initializeDragState(
@@ -135,6 +221,13 @@ class PaneController extends ChangeNotifier {
     // Finalize auto-hide state if present
     final state = _autoHideStates[id];
     if (state == null) return;
+
+    // Check if pane still exists before finalizing behavior
+    final entryExists = _entries.any((e) => e.id == id);
+    if (!entryExists) {
+      _autoHideStates.remove(id);
+      return;
+    }
 
     _autoHideStates[id] = AutoHideBehavior.finalizeDragState(
       currentState: state,
