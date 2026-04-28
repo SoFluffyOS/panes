@@ -22,6 +22,16 @@ class PaneSizePixel extends PaneSize {
 
   @override
   double get size => pixels;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PaneSizePixel &&
+          runtimeType == other.runtimeType &&
+          pixels == other.pixels;
+
+  @override
+  int get hashCode => pixels.hashCode;
 }
 
 /// A fractional size (similar to flex in [Expanded]).
@@ -34,4 +44,14 @@ class PaneSizeFraction extends PaneSize {
 
   @override
   double get size => fraction;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PaneSizeFraction &&
+          runtimeType == other.runtimeType &&
+          fraction == other.fraction;
+
+  @override
+  int get hashCode => fraction.hashCode;
 }
