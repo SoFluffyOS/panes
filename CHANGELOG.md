@@ -1,3 +1,10 @@
+## 1.3.0
+
+- ✨ **Dynamic Pane Management**: Added ability to add, remove, and update panes at runtime via `PaneController` (@simonpham)
+  - New methods: `addPane`, `addPanes`, `removePane`, `updatePane`.
+  - Automatic state cleanup when panes are removed.
+- ✨ **PaneSize Equality**: Added `operator ==` and `hashCode` to `PaneSize` subclasses for easier configuration comparisons.
+
 ## 1.2.0
 
 - ✨ Implement zero-space resizer layout handling by @simonpham
