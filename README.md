@@ -14,6 +14,7 @@ A powerful Flutter package for creating complex, resizable, multi-pane layouts. 
 - 📱 **Responsive**: Works great on Desktop and Web, providing a native-feeling experience.
 - 🎨 **Theming**: Fully customizable appearance using `PaneTheme` to match your app's design.
 - ⌨️ **Programmatic Control**: Show, hide, maximize, and resize panes using `PaneController`.
+- ➕ **Dynamic Management**: Add, remove, or update panes at runtime without losing state.
 - 💾 **Save/Load State**: Serialize and restore layout configurations with `save()` and `load()`.
 - 📑 **Tabbed Interfaces**: Built-in support for tabbed panes with icons and action buttons.
 - 🖱️ **Customizable Resizers**: Control the thickness, color, and hit-test area of split handlers.
@@ -72,6 +73,31 @@ MultiPane(
     _ => const SizedBox(),
   },
 )
+```
+
+### Dynamic Pane Management
+
+`PaneController` allows you to modify the layout at runtime:
+
+```dart
+// Add a new pane at the end
+controller.addPane(
+  PaneEntry(
+    id: 'new-panel',
+    initialSize: PaneSize.fraction(0.5),
+  ),
+);
+
+// Add at a specific position
+controller.addPane(entry, index: 1);
+
+// Remove a pane and clean up its state
+controller.removePane('new-panel');
+
+// Update pane constraints (e.g., change minSize)
+controller.updatePane(
+  entry.copyWith(minSize: PaneSize.pixel(200)),
+);
 ```
 
 ### Standard IDE Layout
