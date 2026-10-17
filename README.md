@@ -165,6 +165,43 @@ class _MyIdeState extends State<MyIde> {
 }
 ```
 
+### Bottom Panel Layout
+
+`IdeController.bottomLayout` controls where the bottom panel sits relative to the side panes. You can set it in the constructor or change it at runtime. Pane sizes, visibility, and widget state carry over when it changes.
+
+```text
+contained (default)        fullWidth
+┌────┬────────┬─────┐      ┌────┬────────┬─────┐
+│    │ editor │     │      │left│ editor │right│
+│left├────────┤right│      ├────┴────────┴─────┤
+│    │ bottom │     │      │      bottom       │
+└────┴────────┴─────┘      └───────────────────┘
+
+extendLeft                 extendRight
+┌────┬────────┬─────┐      ┌────┬────────┬─────┐
+│left│ editor │     │      │    │ editor │right│
+├────┴────────┤right│      │left├────────┴─────┤
+│   bottom    │     │      │    │    bottom    │
+└─────────────┴─────┘      └────┴──────────────┘
+```
+
+```dart
+final controller = IdeController(bottomLayout: IdeBottomLayout.fullWidth);
+
+// Switch at runtime
+controller.bottomLayout = IdeBottomLayout.extendLeft;
+```
+
+In `extendLeft` and `extendRight`, the extended side pane moves from `rootController` to `topController`. Use the layout-aware helpers rather than assuming which controller holds a pane:
+
+```dart
+controller.controllerOf(IdePane.left).resetSize(IdePane.left.id);
+
+// Maximize a pane to fill the whole layout, in any bottom layout
+controller.toggleMaximize(IdePane.bottom);
+print(controller.maximizedPane); // IdePane.bottom
+```
+
 ### Listening to Pane State Changes
 
 `IdeLayout` provides callbacks to react to visibility and maximize state changes:

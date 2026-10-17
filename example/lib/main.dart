@@ -6,6 +6,9 @@
 /// - `IdeController` - Manages IDE-like layout with left, right, center, bottom panes
 /// - `leftSize`, `rightSize`, `bottomSize` - Initial panel sizing with PaneSize
 /// - `toggleLeft()`, `toggleRight()`, `toggleBottom()` - Panel visibility toggles
+/// - `bottomLayout` - Contained, full width, or extended under one side pane
+/// - `controllerOf(pane)` - The PaneController currently holding a pane
+/// - `maximize(pane)`, `restore()`, `toggleMaximize(pane)`, `maximizedPane`
 /// - `save()`, `load()` - Serialize/deserialize layout state
 /// - `animationDuration` - Animation timing for panel transitions
 ///
@@ -303,23 +306,10 @@ class _IdeExampleState extends State<IdeExample> {
                           onPaneStateChanged: _onPaneStateChanged,
                           onMaximizeStateChanged: (isMaximized) {
                             setState(() {
-                              // Determine which pane is maximized based on
-                              // which pane ID is set in each controller
-                              if (isMaximized) {
-                                final centerMaxId = _ideController
-                                    .centerController
-                                    .maximizedPaneId;
-                                if (centerMaxId == IdePane.bottom.id) {
-                                  _isTerminalMaximized = true;
-                                  _isEditorMaximized = false;
-                                } else {
-                                  _isEditorMaximized = true;
-                                  _isTerminalMaximized = false;
-                                }
-                              } else {
-                                _isEditorMaximized = false;
-                                _isTerminalMaximized = false;
-                              }
+                              final maximized = _ideController.maximizedPane;
+                              _isEditorMaximized = maximized == IdePane.center;
+                              _isTerminalMaximized =
+                                  maximized == IdePane.bottom;
                             });
                           },
                           // Use onSizeChanged callback for realtime size updates
@@ -392,10 +382,11 @@ class _IdeExampleState extends State<IdeExample> {
                 : null,
           ),
           _titleBarAction(Icons.restart_alt, 'Reset Sizes', () {
-            _ideController.rootController.resetSize(IdePane.left.id);
-            _ideController.rootController.resetSize(IdePane.right.id);
-            _ideController.centerController.resetSize(IdePane.bottom.id);
+            for (final pane in [IdePane.left, IdePane.right, IdePane.bottom]) {
+              _ideController.controllerOf(pane).resetSize(pane.id);
+            }
           }),
+          _buildBottomLayoutMenu(),
           // Fleet uses a command palette style search in the title bar
           Expanded(
             child: Center(
@@ -463,6 +454,35 @@ class _IdeExampleState extends State<IdeExample> {
     );
   }
 
+  Widget _buildBottomLayoutMenu() {
+    // Demonstrates switching IdeController.bottomLayout at runtime
+    const labels = {
+      IdeBottomLayout.contained: 'Bottom: Contained',
+      IdeBottomLayout.fullWidth: 'Bottom: Full Width',
+      IdeBottomLayout.extendLeft: 'Bottom: Extend Left',
+      IdeBottomLayout.extendRight: 'Bottom: Extend Right',
+    };
+    return PopupMenuButton<IdeBottomLayout>(
+      tooltip: 'Bottom Panel Layout',
+      initialValue: _ideController.bottomLayout,
+      onSelected: (layout) {
+        setState(() => _ideController.bottomLayout = layout);
+      },
+      itemBuilder: (context) => [
+        for (final MapEntry(key: layout, value: label) in labels.entries)
+          PopupMenuItem(value: layout, child: Text(label)),
+      ],
+      child: const Padding(
+        padding: EdgeInsets.all(6),
+        child: Icon(
+          Icons.view_quilt_outlined,
+          size: 16,
+          color: IdeColors.textMuted,
+        ),
+      ),
+    );
+  }
+
   Widget _titleBarAction(IconData icon, String tooltip, VoidCallback? onTap) {
     final isEnabled = onTap != null;
     return Tooltip(
@@ -484,21 +504,23 @@ class _IdeExampleState extends State<IdeExample> {
 
   Widget _buildPaneSizeIndicator() {
     // Demonstrates getPixelSize and getFractionalSize APIs
-    final leftSize = _ideController.rootController.getPixelSize(
-      IdePane.left.id,
-    );
-    final rightSize = _ideController.rootController.getPixelSize(
-      IdePane.right.id,
-    );
+    // controllerOf() resolves the controller holding each pane, which
+    // depends on the bottom layout
+    final leftSize = _ideController
+        .controllerOf(IdePane.left)
+        .getPixelSize(IdePane.left.id);
+    final rightSize = _ideController
+        .controllerOf(IdePane.right)
+        .getPixelSize(IdePane.right.id);
     final bottomSize = _ideController.centerController.getPixelSize(
       IdePane.bottom.id,
     );
-    final leftVisible = _ideController.rootController.isVisible(
-      IdePane.left.id,
-    );
-    final rightVisible = _ideController.rootController.isVisible(
-      IdePane.right.id,
-    );
+    final leftVisible = _ideController
+        .controllerOf(IdePane.left)
+        .isVisible(IdePane.left.id);
+    final rightVisible = _ideController
+        .controllerOf(IdePane.right)
+        .isVisible(IdePane.right.id);
     final bottomVisible = _ideController.centerController.isVisible(
       IdePane.bottom.id,
     );
@@ -633,18 +655,16 @@ class _IdeExampleState extends State<IdeExample> {
                   _panelAction(Icons.refresh, 'Refresh'),
                   // Demonstrate maximize for left panel
                   Tooltip(
-                    message: _ideController.rootController.isMaximized
+                    message: _ideController.maximizedPane == IdePane.left
                         ? 'Restore'
                         : 'Maximize',
                     child: InkWell(
-                      onTap: () => _ideController.rootController.toggleMaximize(
-                        IdePane.left.id,
-                      ),
+                      onTap: () => _ideController.toggleMaximize(IdePane.left),
                       borderRadius: BorderRadius.circular(4),
                       child: Padding(
                         padding: const EdgeInsets.all(4),
                         child: Icon(
-                          _ideController.rootController.isMaximized
+                          _ideController.maximizedPane == IdePane.left
                               ? Icons.fullscreen_exit
                               : Icons.fullscreen,
                           size: 16,
@@ -883,14 +903,7 @@ class _IdeExampleState extends State<IdeExample> {
           Tooltip(
             message: _isEditorMaximized ? 'Restore' : 'Maximize',
             child: InkWell(
-              onTap: () {
-                _ideController.rootController.toggleMaximize(
-                  IdePane.centerContainer.id,
-                );
-                _ideController.centerController.toggleMaximize(
-                  IdePane.center.id,
-                );
-              },
+              onTap: () => _ideController.toggleMaximize(IdePane.center),
               borderRadius: BorderRadius.circular(4),
               child: Padding(
                 padding: const EdgeInsets.all(4),
@@ -1255,18 +1268,16 @@ class _IdeExampleState extends State<IdeExample> {
                   _panelAction(Icons.filter_list, 'Filter'),
                   // Demonstrate maximize for right panel
                   Tooltip(
-                    message: _ideController.rootController.isMaximized
+                    message: _ideController.maximizedPane == IdePane.right
                         ? 'Restore'
                         : 'Maximize',
                     child: InkWell(
-                      onTap: () => _ideController.rootController.toggleMaximize(
-                        IdePane.right.id,
-                      ),
+                      onTap: () => _ideController.toggleMaximize(IdePane.right),
                       borderRadius: BorderRadius.circular(4),
                       child: Padding(
                         padding: const EdgeInsets.all(4),
                         child: Icon(
-                          _ideController.rootController.isMaximized
+                          _ideController.maximizedPane == IdePane.right
                               ? Icons.fullscreen_exit
                               : Icons.fullscreen,
                           size: 16,
@@ -1358,15 +1369,9 @@ class _IdeExampleState extends State<IdeExample> {
             Tooltip(
               message: _isTerminalMaximized ? 'Restore' : 'Maximize',
               child: InkWell(
-                onTap: () {
-                  // Maximize both controllers for true full-screen terminal
-                  _ideController.rootController.toggleMaximize(
-                    IdePane.centerContainer.id,
-                  );
-                  _ideController.centerController.toggleMaximize(
-                    IdePane.bottom.id,
-                  );
-                },
+                // Maximizes every enclosing pane for a full-screen terminal,
+                // whatever the bottom layout
+                onTap: () => _ideController.toggleMaximize(IdePane.bottom),
                 borderRadius: BorderRadius.circular(4),
                 child: Padding(
                   padding: const EdgeInsets.all(4),
