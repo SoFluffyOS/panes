@@ -1,4 +1,4 @@
-## Unreleased
+## 1.4.0
 
 - ✨ **Bottom Panel Layouts**: `IdeController.bottomLayout` places the bottom panel `contained` (default), `fullWidth`, `extendLeft`, or `extendRight`. It can be changed at runtime; sizes, visibility, and pane widget state are preserved.
   - New `IdeController.topController` holds the row above the bottom panel when it extends under a side pane.
