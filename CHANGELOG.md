@@ -1,3 +1,11 @@
+## Unreleased
+
+- ✨ **Bottom Panel Layouts**: `IdeController.bottomLayout` places the bottom panel `contained` (default), `fullWidth`, `extendLeft`, or `extendRight`. It can be changed at runtime; sizes, visibility, and pane widget state are preserved.
+  - New `IdeController.topController` holds the row above the bottom panel when it extends under a side pane.
+  - New `IdeController.controllerOf(pane)` returns the controller currently holding a pane.
+  - New layout-aware `maximize(pane)`, `restore()`, `toggleMaximize(pane)`, and `maximizedPane` on `IdeController`.
+  - `IdeController` is now a `ChangeNotifier`, and `save()` includes the `top` controller state.
+
 ## 1.3.0
 
 - ✨ **Dynamic Pane Management**: Added ability to add, remove, and update panes at runtime via `PaneController` (@simonpham)
