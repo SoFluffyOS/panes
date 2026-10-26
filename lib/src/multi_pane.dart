@@ -26,6 +26,9 @@ class MultiPane extends StatefulWidget {
   final PaneBuilder paneBuilder;
 
   /// The duration of the animation when panes are resized or toggled.
+  ///
+  /// Panes change size at once when [MediaQueryData.disableAnimations] is
+  /// set, as it is when the platform asks to reduce motion.
   final Duration animationDuration;
 
   /// The curve of the animation when panes are resized or toggled.
@@ -103,6 +106,11 @@ class _MultiPaneState extends State<MultiPane> {
 
         // Use controller's isResizing state
         final isResizing = widget.controller.isResizing;
+        final reducesMotion =
+            MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+        final duration = isResizing || reducesMotion
+            ? Duration.zero
+            : widget.animationDuration;
 
         for (int i = 0; i < entries.length; i++) {
           final entry = entries[i];
@@ -126,7 +134,7 @@ class _MultiPaneState extends State<MultiPane> {
           Widget wrappedChild = switch (effectiveSize) {
             PaneSizePixel(:final pixels) => TweenAnimationBuilder<double>(
                 tween: Tween<double>(end: isVisible ? pixels : 0.0),
-                duration: isResizing ? Duration.zero : widget.animationDuration,
+                duration: duration,
                 curve: widget.animationCurve,
                 builder: (context, currentSize, child) {
                   final progress = pixels > 0 ? (currentSize / pixels) : 0.0;
@@ -185,7 +193,7 @@ class _MultiPaneState extends State<MultiPane> {
 
             children.add(
               TweenAnimationBuilder<double>(
-                duration: isResizing ? Duration.zero : widget.animationDuration,
+                duration: duration,
                 curve: widget.animationCurve,
                 tween:
                     Tween<double>(end: resizerVisible ? resizerLayoutSize : 0),

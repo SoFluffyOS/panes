@@ -1,3 +1,7 @@
+## Unreleased
+
+- ♿ **Reduce Motion**: Panes change size at once, without animating, when `MediaQuery.disableAnimations` is set, as it is when the platform asks to reduce motion.
+
 ## 1.4.0
 
 - ✨ **Bottom Panel Layouts**: `IdeController.bottomLayout` places the bottom panel `contained` (default), `fullWidth`, `extendLeft`, or `extendRight`. It can be changed at runtime; sizes, visibility, and pane widget state are preserved.
