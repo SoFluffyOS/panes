@@ -1,4 +1,4 @@
-## Unreleased
+## 1.5.0
 
 - ♿ **Reduce Motion**: Panes change size at once, without animating, when `MediaQuery.disableAnimations` is set, as it is when the platform asks to reduce motion.
 
